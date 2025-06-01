@@ -83,25 +83,17 @@ const Index = () => {
           <LoadingSpinner />
         ) : (
           <div className="space-y-8">
-            {(activeTab === 'overview' || activeTab === 'chart') && (
-              <NiftyChart />
+            {activeTab === 'overview' && (
+              <>
+                <NiftyChart />
+                <ImpactAnalysis />
+                <MarketNews />
+              </>
             )}
             
-            {(activeTab === 'overview' || activeTab === 'impact') && (
-              <ImpactAnalysis />
-            )}
+            {activeTab === 'news' && <MarketNews />}
             
-            {(activeTab === 'overview' || activeTab === 'news') && (
-              <MarketNews />
-            )}
-            
-            {activeTab === 'news' && activeTab !== 'overview' && (
-              <MarketNews />
-            )}
-            
-            {activeTab === 'impact' && activeTab !== 'overview' && (
-              <ImpactAnalysis />
-            )}
+            {activeTab === 'impact' && <ImpactAnalysis />}
           </div>
         )}
 
