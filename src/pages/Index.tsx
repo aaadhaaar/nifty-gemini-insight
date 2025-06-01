@@ -1,83 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import StatsBar from '@/components/StatsBar';
-import FilterBar from '@/components/FilterBar';
-import NewsCard from '@/components/NewsCard';
+import NiftyChart from '@/components/NiftyChart';
+import ImpactAnalysis from '@/components/ImpactAnalysis';
+import MarketNews from '@/components/MarketNews';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, BarChart3, Newspaper, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Mock data for demo purposes
-const mockNewsData = [
-  {
-    id: '1',
-    title: 'Reliance Industries announces major expansion in renewable energy sector',
-    company: 'Reliance Industries',
-    timestamp: '2 hours ago',
-    what: 'Reliance Industries has announced a ₹75,000 crore investment plan for expanding its renewable energy portfolio, including solar manufacturing and green hydrogen production facilities.',
-    why: 'This strategic move positions Reliance to capitalize on India\'s energy transition goals and government incentives for clean energy. The investment could significantly boost long-term profitability and ESG credentials.',
-    sentiment: 'bullish' as const,
-    impact: 'high' as const,
-    category: 'Strategic Investment'
-  },
-  {
-    id: '2',
-    title: 'TCS reports strong Q3 earnings with 15% YoY growth',
-    company: 'Tata Consultancy Services',
-    timestamp: '4 hours ago',
-    what: 'TCS reported quarterly revenue of ₹58,229 crores, marking a 15% year-over-year growth. The company also announced new major client wins in the BFSI and retail sectors.',
-    why: 'Strong earnings indicate robust demand for IT services globally. New client acquisitions suggest sustained growth momentum and market share expansion in key verticals.',
-    sentiment: 'bullish' as const,
-    impact: 'high' as const,
-    category: 'Earnings Report'
-  },
-  {
-    id: '3',
-    title: 'HDFC Bank faces regulatory scrutiny over digital lending practices',
-    company: 'HDFC Bank',
-    timestamp: '6 hours ago',
-    what: 'RBI has issued a notice to HDFC Bank regarding certain digital lending practices and has asked for clarification on compliance with new digital lending guidelines.',
-    why: 'Regulatory scrutiny could lead to operational changes and potential penalties. However, proactive compliance improvements might strengthen long-term competitive position.',
-    sentiment: 'bearish' as const,
-    impact: 'medium' as const,
-    category: 'Regulatory Update'
-  },
-  {
-    id: '4',
-    title: 'Infosys launches new AI-powered cloud platform for enterprises',
-    company: 'Infosys',
-    timestamp: '8 hours ago',
-    what: 'Infosys unveiled "Topaz AI," a comprehensive AI-first platform that integrates cloud services, machine learning, and automation tools for enterprise clients.',
-    why: 'This platform positions Infosys competitively in the high-growth AI and cloud services market, potentially driving higher-margin revenues and client stickiness.',
-    sentiment: 'bullish' as const,
-    impact: 'medium' as const,
-    category: 'Product Launch'
-  }
-];
-
 const Index = () => {
-  const [newsData, setNewsData] = useState(mockNewsData);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('All Companies');
-  const [selectedSentiment, setSelectedSentiment] = useState('All');
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
-
-  // Filter news based on search and filters
-  const filteredNews = newsData.filter(news => {
-    const matchesSearch = news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         news.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCompany = selectedCompany === 'All Companies' || news.company === selectedCompany;
-    const matchesSentiment = selectedSentiment === 'All' || 
-                            news.sentiment.toLowerCase() === selectedSentiment.toLowerCase();
-    
-    return matchesSearch && matchesCompany && matchesSentiment;
-  });
-
-  // Calculate stats
-  const bullishNews = newsData.filter(news => news.sentiment === 'bullish').length;
-  const bearishNews = newsData.filter(news => news.sentiment === 'bearish').length;
+  const [activeTab, setActiveTab] = useState('overview');
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -96,16 +30,22 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'news', label: 'Market News', icon: Newspaper },
+    { id: 'impact', label: 'Impact Analysis', icon: Target }
+  ];
+
   return (
     <div className="min-h-screen">
       <Header />
       
       <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-4xl font-bold text-white mb-2">Market Intelligence</h2>
-              <p className="text-gray-400 text-lg">AI-powered analysis of Nifty 50 news and market movements</p>
+              <h1 className="text-5xl font-bold gradient-text mb-3">Nifty 50 Intelligence</h1>
+              <p className="text-gray-400 text-xl">Real-time market analysis powered by AI</p>
             </div>
             <Button
               onClick={handleRefresh}
@@ -113,42 +53,63 @@ const Index = () => {
               className="glass-effect border-white/10 text-white hover:bg-white/10"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              Refresh Data
             </Button>
           </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex space-x-1 p-1 glass-effect rounded-xl mb-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 flex-1 justify-center ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-
-        <StatsBar
-          totalNews={newsData.length}
-          bullishNews={bullishNews}
-          bearishNews={bearishNews}
-          lastUpdate={lastUpdate}
-        />
-
-        <FilterBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedCompany={selectedCompany}
-          setSelectedCompany={setSelectedCompany}
-          selectedSentiment={selectedSentiment}
-          setSelectedSentiment={setSelectedSentiment}
-        />
 
         {loading ? (
           <LoadingSpinner />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {filteredNews.map((news) => (
-              <NewsCard key={news.id} news={news} />
-            ))}
+          <div className="space-y-8">
+            {(activeTab === 'overview' || activeTab === 'chart') && (
+              <NiftyChart />
+            )}
+            
+            {(activeTab === 'overview' || activeTab === 'impact') && (
+              <ImpactAnalysis />
+            )}
+            
+            {(activeTab === 'overview' || activeTab === 'news') && (
+              <MarketNews />
+            )}
+            
+            {activeTab === 'news' && activeTab !== 'overview' && (
+              <MarketNews />
+            )}
+            
+            {activeTab === 'impact' && activeTab !== 'overview' && (
+              <ImpactAnalysis />
+            )}
           </div>
         )}
 
-        {filteredNews.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">No news found matching your criteria.</p>
-          </div>
-        )}
+        <div className="mt-12 text-center">
+          <p className="text-gray-500 text-sm">
+            Last updated: {lastUpdate} | Data refreshes every hour
+          </p>
+        </div>
       </main>
     </div>
   );
