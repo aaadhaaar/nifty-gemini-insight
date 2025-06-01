@@ -5,13 +5,14 @@ import NiftyChart from '@/components/NiftyChart';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { RefreshCw, BarChart3, Newspaper, Target } from 'lucide-react';
+import { RefreshCw, BarChart3, Newspaper, Target, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
   const [activeTab, setActiveTab] = useState('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -32,62 +33,117 @@ const Index = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'news', label: 'Market News', icon: Newspaper },
-    { id: 'impact', label: 'Impact Analysis', icon: Target }
+    { id: 'news', label: 'News', icon: Newspaper },
+    { id: 'impact', label: 'Analysis', icon: Target }
   ];
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      
-      <main className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-5xl font-bold gradient-text mb-3">Nifty 50 Intelligence</h1>
-              <p className="text-gray-400 text-xl">Real-time market analysis powered by AI</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-white" />
             </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">Nifty Insights</h1>
+              <p className="text-xs text-slate-400">AI Market Analysis</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
             <Button
               onClick={handleRefresh}
               disabled={loading}
-              className="glass-effect border-white/10 text-white hover:bg-white/10"
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:text-white hover:bg-slate-800"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Data
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:text-white hover:bg-slate-800 md:hidden"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </Button>
           </div>
+        </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex space-x-1 p-1 glass-effect rounded-xl mb-8">
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <div className="border-t border-slate-700/50 md:hidden">
+            <div className="grid grid-cols-3 gap-1 p-2">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex flex-col items-center space-y-1 p-3 rounded-xl transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="text-xs font-medium">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:block border-t border-slate-700/50">
+          <div className="flex space-x-1 p-2 max-w-md mx-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 flex-1 justify-center ${
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex-1 justify-center ${
                     activeTab === tab.id
                       ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{tab.label}</span>
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm">{tab.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <main className="p-4 pb-20">
         {loading ? (
-          <LoadingSpinner />
+          <div className="flex items-center justify-center py-20">
+            <LoadingSpinner />
+          </div>
         ) : (
-          <div className="space-y-8">
+          <div className="max-w-4xl mx-auto space-y-6">
             {activeTab === 'overview' && (
               <>
                 <NiftyChart />
-                <ImpactAnalysis />
-                <MarketNews />
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="lg:col-span-2">
+                    <ImpactAnalysis />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <MarketNews />
+                  </div>
+                </div>
               </>
             )}
             
@@ -97,10 +153,17 @@ const Index = () => {
           </div>
         )}
 
-        <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm">
-            Last updated: {lastUpdate} | Data refreshes every hour
-          </p>
+        {/* Status Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700/50 p-3">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+              <span className="text-xs text-slate-400">Live Data</span>
+            </div>
+            <span className="text-xs text-slate-400">
+              Updated: {lastUpdate}
+            </span>
+          </div>
         </div>
       </main>
     </div>

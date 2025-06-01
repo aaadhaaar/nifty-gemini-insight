@@ -23,16 +23,17 @@ const NiftyChart = () => {
   const isPositive = change >= 0;
 
   return (
-    <div className="glass-effect rounded-2xl p-6 mb-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Nifty 50</h2>
-          <div className="flex items-center space-x-4">
-            <span className="text-4xl font-bold text-white">{currentPrice.toLocaleString()}</span>
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-              isPositive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+          <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Nifty 50</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <span className="text-2xl md:text-3xl font-bold text-white">{currentPrice.toLocaleString()}</span>
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+              isPositive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
             }`}>
-              {isPositive ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+              {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
               <span className="font-semibold">
                 {isPositive ? '+' : ''}{change.toFixed(2)} ({isPositive ? '+' : ''}{changePercent}%)
               </span>
@@ -40,16 +41,14 @@ const NiftyChart = () => {
           </div>
         </div>
         
-        <div className="text-right">
-          <div className="flex items-center space-x-2 text-gray-400 mb-2">
-            <Activity className="w-4 h-4" />
-            <span className="text-sm">Live Market</span>
-          </div>
-          <p className="text-sm text-gray-400">Last updated: {new Date().toLocaleTimeString()}</p>
+        <div className="flex items-center space-x-2 text-slate-400">
+          <Activity className="w-4 h-4" />
+          <span className="text-sm">Live</span>
         </div>
       </div>
 
-      <div className="h-80 mb-6">
+      {/* Chart */}
+      <div className="h-64 md:h-80 mb-6">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={niftyData}>
             <defs>
@@ -58,23 +57,28 @@ const NiftyChart = () => {
                 <stop offset="95%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
             <XAxis 
               dataKey="time" 
-              stroke="#9ca3af"
+              stroke="#94a3b8"
               fontSize={12}
+              axisLine={false}
+              tickLine={false}
             />
             <YAxis 
-              stroke="#9ca3af"
+              stroke="#94a3b8"
               fontSize={12}
               domain={['dataMin - 50', 'dataMax + 50']}
+              axisLine={false}
+              tickLine={false}
             />
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                border: '1px solid rgba(75, 85, 99, 0.3)',
-                borderRadius: '8px',
-                color: '#fff'
+                backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                border: '1px solid rgba(71, 85, 105, 0.3)',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '14px'
               }}
               formatter={(value) => [`₹${value.toLocaleString()}`, 'Price']}
             />
@@ -82,25 +86,26 @@ const NiftyChart = () => {
               type="monotone"
               dataKey="price"
               stroke={isPositive ? "#10b981" : "#ef4444"}
-              strokeWidth={3}
+              strokeWidth={2}
               fill="url(#priceGradient)"
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-          <p className="text-sm text-blue-300 mb-1">Day High</p>
-          <p className="text-lg font-semibold text-white">₹20,180</p>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-3 md:p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+          <p className="text-xs md:text-sm text-blue-300 mb-1">Day High</p>
+          <p className="text-sm md:text-lg font-semibold text-white">₹20,180</p>
         </div>
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-          <p className="text-sm text-red-300 mb-1">Day Low</p>
-          <p className="text-lg font-semibold text-white">₹19,820</p>
+        <div className="p-3 md:p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <p className="text-xs md:text-sm text-red-300 mb-1">Day Low</p>
+          <p className="text-sm md:text-lg font-semibold text-white">₹19,820</p>
         </div>
-        <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-          <p className="text-sm text-purple-300 mb-1">Volume</p>
-          <p className="text-lg font-semibold text-white">2.4M</p>
+        <div className="p-3 md:p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+          <p className="text-xs md:text-sm text-purple-300 mb-1">Volume</p>
+          <p className="text-sm md:text-lg font-semibold text-white">2.4M</p>
         </div>
       </div>
     </div>
