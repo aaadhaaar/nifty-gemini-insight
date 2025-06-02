@@ -1,5 +1,5 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface NewsArticle {
@@ -40,9 +40,8 @@ export const useNewsData = () => {
 };
 
 export const useFetchNews = () => {
-  return useQuery({
-    queryKey: ['fetch-news'],
-    queryFn: async () => {
+  return useMutation({
+    mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('fetch-news');
       
       if (error) {
@@ -52,6 +51,5 @@ export const useFetchNews = () => {
 
       return data;
     },
-    enabled: false, // Only run when manually triggered
   });
 };

@@ -188,6 +188,50 @@ const MarketNews = () => {
       )}
     </div>
   );
+
+  function getSentimentIcon(sentiment: string | null) {
+    switch (sentiment) {
+      case 'positive':
+        return <TrendingUp className="w-4 h-4 text-emerald-400" />;
+      case 'negative':
+        return <TrendingDown className="w-4 h-4 text-red-400" />;
+      default:
+        return <AlertCircle className="w-4 h-4 text-yellow-400" />;
+    }
+  }
+
+  function getSentimentColor(sentiment: string | null) {
+    switch (sentiment) {
+      case 'positive':
+        return 'border-emerald-400/30 bg-emerald-400/5';
+      case 'negative':
+        return 'border-red-400/30 bg-red-400/5';
+      default:
+        return 'border-yellow-400/30 bg-yellow-400/5';
+    }
+  }
+
+  function getImpactBadge(impact: string | null) {
+    const colors = {
+      high: 'bg-red-500/20 text-red-300 border-red-500/30',
+      medium: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+      low: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+    };
+    return colors[impact as keyof typeof colors] || colors.low;
+  }
+
+  function formatTimeAgo(dateString: string | null) {
+    if (!dateString) return 'Unknown time';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} days ago`;
+  }
 };
 
 export default MarketNews;
