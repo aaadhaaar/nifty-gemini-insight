@@ -9,7 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      market_analysis: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          expected_points_impact: number | null
+          id: string
+          market_impact_description: string
+          news_article_id: string | null
+          what_happened: string
+          why_matters: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          expected_points_impact?: number | null
+          id?: string
+          market_impact_description: string
+          news_article_id?: string | null
+          what_happened: string
+          why_matters: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          expected_points_impact?: number | null
+          id?: string
+          market_impact_description?: string
+          news_article_id?: string | null
+          what_happened?: string
+          why_matters?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_analysis_news_article_id_fkey"
+            columns: ["news_article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_articles: {
+        Row: {
+          category: string | null
+          companies: string[] | null
+          content: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          market_impact: string | null
+          published_at: string | null
+          sentiment: string | null
+          source: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          category?: string | null
+          companies?: string[] | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          market_impact?: string | null
+          published_at?: string | null
+          sentiment?: string | null
+          source?: string | null
+          summary?: string | null
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          category?: string | null
+          companies?: string[] | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          market_impact?: string | null
+          published_at?: string | null
+          sentiment?: string | null
+          source?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
