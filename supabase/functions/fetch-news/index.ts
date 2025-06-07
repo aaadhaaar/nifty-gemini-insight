@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -18,60 +17,116 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     )
 
-    console.log('Fetching news from NewsAPI...')
+    console.log('Checking daily API usage...')
     
-    // Fetch news from the API
-    const newsResponse = await fetch('https://newsapi.org/v2/everything?q=Nifty%2050%20OR%20BSE%20OR%20NSE%20OR%20Indian%20stock%20market&language=en&sortBy=publishedAt&pageSize=20', {
-      headers: {
-        'X-API-Key': Deno.env.get('NEWS_API_KEY') ?? '',
-      },
-    })
+    // Check today's API usage to respect 60 searches/day limit
+    const today = new Date().toISOString().split('T')[0]
+    const { data: usageData } = await supabaseClient
+      .from('api_usage')
+      .select('search_count')
+      .eq('date', today)
+      .eq('api_name', 'brave_search')
+      .single()
 
-    if (!newsResponse.ok) {
-      throw new Error(`News API error: ${newsResponse.status}`)
+    const currentSearches = usageData?.search_count || 0
+    const maxDailySearches = 55 // Keep buffer under 60
+
+    if (currentSearches >= maxDailySearches) {
+      console.log(`Daily limit reached: ${currentSearches}/${maxDailySearches}`)
+      return new Response(
+        JSON.stringify({ success: false, message: 'Daily API limit reached' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
 
-    const newsData = await newsResponse.json()
-    const articles = newsData.articles || []
-    console.log(`Processing ${articles.length} articles...`)
+    console.log(`Current usage: ${currentSearches}/${maxDailySearches} searches`)
+    
+    const searchQueries = [
+      'Nifty 50 India stock market news today',
+      'BSE Sensex market news India',
+      'NSE Indian stock market updates'
+    ]
 
-    // Process and store articles
-    for (const article of articles) {
-      if (!article.title || !article.publishedAt) continue
+    const maxSearchesToday = Math.min(3, maxDailySearches - currentSearches)
+    const processedArticles = []
 
-      console.log(`Analyzing article: ${article.title}`)
-
-      // Use Gemini AI for enhanced analysis
-      const analysis = await analyzeWithGemini(article.title, article.description || '', article.content || '')
+    for (let i = 0; i < maxSearchesToday; i++) {
+      const query = searchQueries[i]
+      console.log(`Searching Brave for: ${query}`)
       
-      const { error } = await supabaseClient
-        .from('news_articles')
+      const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5&freshness=pd`, {
+        headers: {
+          'X-Subscription-Token': Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '',
+          'Accept': 'application/json',
+        },
+      })
+
+      if (!braveResponse.ok) {
+        console.error(`Brave Search API error: ${braveResponse.status}`)
+        continue
+      }
+
+      const searchData = await braveResponse.json()
+      const results = searchData.web?.results || []
+      console.log(`Found ${results.length} results for query: ${query}`)
+
+      // Update API usage count
+      await supabaseClient
+        .from('api_usage')
         .upsert({
-          title: article.title,
-          content: analysis.summary || article.description,
-          summary: analysis.summary,
-          url: article.url,
-          image_url: article.urlToImage,
-          published_at: article.publishedAt,
-          source: article.source?.name,
-          category: analysis.category || 'Market News',
-          sentiment: analysis.sentiment,
-          market_impact: analysis.marketImpact,
-          companies: analysis.companies,
-        }, {
-          onConflict: 'url',
-          ignoreDuplicates: true
+          date: today,
+          api_name: 'brave_search',
+          search_count: currentSearches + i + 1
         })
 
-      if (error) {
-        console.error('Error inserting article:', error)
-      } else {
-        console.log(`Successfully processed: ${article.title}`)
+      // Process search results
+      for (const result of results.slice(0, 3)) { // Limit to 3 results per query
+        if (!result.title || !result.url) continue
+
+        console.log(`Processing article: ${result.title}`)
+
+        // Use Gemini AI for enhanced analysis
+        const analysis = await analyzeWithGemini(
+          result.title, 
+          result.description || '', 
+          result.title // Use title as content since we don't have full article
+        )
+        
+        const { error } = await supabaseClient
+          .from('news_articles')
+          .upsert({
+            title: result.title,
+            content: analysis.summary || result.description,
+            summary: analysis.summary,
+            url: result.url,
+            image_url: null, // Brave Search doesn't provide images in basic results
+            published_at: result.age ? new Date(Date.now() - (parseAge(result.age) * 1000)).toISOString() : new Date().toISOString(),
+            source: extractDomain(result.url),
+            category: analysis.category || 'Market News',
+            sentiment: analysis.sentiment,
+            market_impact: analysis.marketImpact,
+            companies: analysis.companies,
+          }, {
+            onConflict: 'url',
+            ignoreDuplicates: true
+          })
+
+        if (error) {
+          console.error('Error inserting article:', error)
+        } else {
+          console.log(`Successfully processed: ${result.title}`)
+          processedArticles.push(result.title)
+        }
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, processed: articles.length }),
+      JSON.stringify({ 
+        success: true, 
+        processed: processedArticles.length,
+        searchesUsed: maxSearchesToday,
+        remainingSearches: maxDailySearches - (currentSearches + maxSearchesToday)
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (error) {
