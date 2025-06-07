@@ -1,5 +1,5 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface NewsArticle {
@@ -37,31 +37,6 @@ export const useNewsData = () => {
       console.log(`Fetched ${data?.length || 0} articles`)
       return data as NewsArticle[];
     },
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-  });
-};
-
-export const useFetchNews = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async () => {
-      console.log('Calling fetch-news function...')
-      const { data, error } = await supabase.functions.invoke('fetch-news');
-      
-      if (error) {
-        console.error('Error calling fetch-news function:', error);
-        throw error;
-      }
-
-      console.log('Fetch-news function completed:', data)
-      return data;
-    },
-    onSuccess: () => {
-      // Invalidate and refetch news data after successful fetch
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['news-articles'] });
-      }, 3000); // Wait a bit for the edge function to complete
-    },
+    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes to show new data
   });
 };

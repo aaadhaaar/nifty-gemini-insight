@@ -138,6 +138,32 @@ serve(async (req) => {
   }
 })
 
+function parseAge(ageString: string): number {
+  // Parse age strings like "2 hours ago", "1 day ago", etc.
+  if (!ageString) return 0
+  
+  const parts = ageString.toLowerCase().split(' ')
+  if (parts.length < 2) return 0
+  
+  const value = parseInt(parts[0]) || 0
+  const unit = parts[1]
+  
+  if (unit.includes('minute')) return value * 60
+  if (unit.includes('hour')) return value * 3600
+  if (unit.includes('day')) return value * 86400
+  if (unit.includes('week')) return value * 604800
+  
+  return 0 // Default to current time if can't parse
+}
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '')
+  } catch {
+    return 'Unknown Source'
+  }
+}
+
 async function analyzeWithGemini(title: string, description: string, content: string): Promise<{
   sentiment: string;
   marketImpact: string;

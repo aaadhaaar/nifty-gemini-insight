@@ -5,28 +5,20 @@ import NiftyChart from '@/components/NiftyChart';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { RefreshCw, BarChart3, Newspaper, Target, Menu, X } from 'lucide-react';
+import { BarChart3, Newspaper, Target, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLastUpdate(new Date().toLocaleTimeString());
-    setLoading(false);
-  };
-
-  // Auto-refresh every hour (simulated)
+  // Auto-update timestamp every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdate(new Date().toLocaleTimeString());
-    }, 60000); // Update timestamp every minute for demo
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -53,15 +45,10 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button
-              onClick={handleRefresh}
-              disabled={loading}
-              size="sm"
-              variant="ghost"
-              className="text-slate-300 hover:text-white hover:bg-slate-800"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+              <span className="text-xs text-slate-400">Auto-sync</span>
+            </div>
             <Button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               size="sm"
@@ -158,10 +145,10 @@ const Index = () => {
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-xs text-slate-400">Live Data</span>
+              <span className="text-xs text-slate-400">News auto-updating every 2 hours</span>
             </div>
             <span className="text-xs text-slate-400">
-              Updated: {lastUpdate}
+              Last refresh: {lastUpdate}
             </span>
           </div>
         </div>

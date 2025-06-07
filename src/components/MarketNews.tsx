@@ -1,18 +1,11 @@
-
 import React from 'react';
-import { Clock, TrendingUp, TrendingDown, AlertCircle, Building2, Zap, RefreshCw } from 'lucide-react';
-import { useNewsData, useFetchNews } from '@/hooks/useNewsData';
+import { Clock, TrendingUp, TrendingDown, AlertCircle, Building2, Zap } from 'lucide-react';
+import { useNewsData } from '@/hooks/useNewsData';
 import LoadingSpinner from './LoadingSpinner';
 import { Button } from '@/components/ui/button';
 
 const MarketNews = () => {
   const { data: newsArticles, isLoading, error, refetch } = useNewsData();
-  const { mutate: fetchNews, isPending: isFetching } = useFetchNews();
-
-  const handleRefresh = () => {
-    fetchNews();
-    setTimeout(() => refetch(), 2000); // Refetch after edge function completes
-  };
 
   const getSentimentIcon = (sentiment: string | null) => {
     switch (sentiment) {
@@ -88,27 +81,20 @@ const MarketNews = () => {
           </div>
           <div>
             <h2 className="text-lg md:text-xl font-bold text-white">Market News</h2>
-            <p className="text-sm text-slate-400">Real-time market updates</p>
+            <p className="text-sm text-slate-400">Auto-updated every 2 hours</p>
           </div>
         </div>
         
-        <Button 
-          onClick={handleRefresh}
-          disabled={isFetching}
-          variant="outline" 
-          size="sm"
-          className="text-slate-300 hover:text-white"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex items-center space-x-2">
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+          <span className="text-xs text-slate-400">Live</span>
+        </div>
       </div>
 
       {!newsArticles || newsArticles.length === 0 ? (
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 text-center">
-          <p className="text-slate-400 mb-4">No news articles found</p>
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            Fetch Latest News
-          </Button>
+          <p className="text-slate-400 mb-2">No news articles available</p>
+          <p className="text-xs text-slate-500">News will be automatically fetched every 2 hours</p>
         </div>
       ) : (
         newsArticles.map((article) => (
