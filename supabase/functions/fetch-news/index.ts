@@ -15,10 +15,10 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Checking daily API usage...')
+    console.log('Starting news fetch process...')
     
     // Check today's API usage to respect 60 searches/day limit
     const today = new Date().toISOString().split('T')[0]
@@ -27,7 +27,7 @@ serve(async (req) => {
       .select('search_count')
       .eq('date', today)
       .eq('api_name', 'brave_search')
-      .single()
+      .maybeSingle()
 
     const currentSearches = usageData?.search_count || 0
     const maxDailySearches = 55 // Keep buffer under 60
@@ -42,10 +42,11 @@ serve(async (req) => {
 
     console.log(`Current usage: ${currentSearches}/${maxDailySearches} searches`)
     
+    // Indian stock market focused search queries
     const searchQueries = [
-      'Nifty 50 India stock market news today',
-      'BSE Sensex market news India',
-      'NSE Indian stock market updates'
+      'Nifty 50 news today Indian stock market',
+      'BSE Sensex latest news India stock market',
+      'Indian stock market news today NSE'
     ]
 
     const maxSearchesToday = Math.min(3, maxDailySearches - currentSearches)
@@ -55,78 +56,93 @@ serve(async (req) => {
       const query = searchQueries[i]
       console.log(`Searching Brave for: ${query}`)
       
-      const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5&freshness=pd`, {
-        headers: {
-          'X-Subscription-Token': Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '',
-          'Accept': 'application/json',
-        },
-      })
-
-      if (!braveResponse.ok) {
-        console.error(`Brave Search API error: ${braveResponse.status}`)
-        continue
-      }
-
-      const searchData = await braveResponse.json()
-      const results = searchData.web?.results || []
-      console.log(`Found ${results.length} results for query: ${query}`)
-
-      // Update API usage count
-      await supabaseClient
-        .from('api_usage')
-        .upsert({
-          date: today,
-          api_name: 'brave_search',
-          search_count: currentSearches + i + 1
+      try {
+        const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5&freshness=pd&country=IN`, {
+          headers: {
+            'X-Subscription-Token': Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '',
+            'Accept': 'application/json',
+          },
         })
 
-      // Process search results
-      for (const result of results.slice(0, 3)) { // Limit to 3 results per query
-        if (!result.title || !result.url) continue
-
-        console.log(`Processing article: ${result.title}`)
-
-        // Check if article already exists
-        const { data: existingArticle } = await supabaseClient
-          .from('news_articles')
-          .select('id')
-          .eq('url', result.url)
-          .single()
-
-        if (existingArticle) {
-          console.log(`Article already exists, skipping: ${result.title}`)
+        if (!braveResponse.ok) {
+          console.error(`Brave Search API error: ${braveResponse.status}`)
           continue
         }
 
-        // Use Gemini AI for enhanced analysis
-        const analysis = await analyzeWithGemini(
-          result.title, 
-          result.description || '', 
-          result.title // Use title as content since we don't have full article
-        )
-        
-        const { error } = await supabaseClient
-          .from('news_articles')
-          .insert({
-            title: result.title,
-            content: analysis.summary || result.description,
-            summary: analysis.summary,
-            url: result.url,
-            image_url: null, // Brave Search doesn't provide images in basic results
-            published_at: result.age ? new Date(Date.now() - (parseAge(result.age) * 1000)).toISOString() : new Date().toISOString(),
-            source: extractDomain(result.url),
-            category: analysis.category || 'Market News',
-            sentiment: analysis.sentiment,
-            market_impact: analysis.marketImpact,
-            companies: analysis.companies,
+        const searchData = await braveResponse.json()
+        const results = searchData.web?.results || []
+        console.log(`Found ${results.length} results for query: ${query}`)
+
+        // Update API usage count
+        await supabaseClient
+          .from('api_usage')
+          .upsert({
+            date: today,
+            api_name: 'brave_search',
+            search_count: currentSearches + i + 1
           })
 
-        if (error) {
-          console.error('Error inserting article:', error)
-        } else {
-          console.log(`Successfully processed: ${result.title}`)
-          processedArticles.push(result.title)
+        // Process search results - limit to top 2 per query to avoid spam
+        for (const result of results.slice(0, 2)) {
+          if (!result.title || !result.url || !result.description) continue
+
+          // Filter for news sources and relevant content
+          if (!isRelevantNewsSource(result.url, result.title)) {
+            console.log(`Skipping non-news source: ${result.url}`)
+            continue
+          }
+
+          console.log(`Processing potential article: ${result.title}`)
+
+          // Check if article already exists by URL
+          const { data: existingArticle } = await supabaseClient
+            .from('news_articles')
+            .select('id')
+            .eq('url', result.url)
+            .maybeSingle()
+
+          if (existingArticle) {
+            console.log(`Article already exists, skipping: ${result.title}`)
+            continue
+          }
+
+          // Use Gemini AI for enhanced analysis
+          const analysis = await analyzeWithGemini(
+            result.title, 
+            result.description, 
+            `${result.title} ${result.description}`
+          )
+          
+          // Extract publication date from result if available
+          const publishedAt = extractPublishedDate(result)
+          
+          const { data, error } = await supabaseClient
+            .from('news_articles')
+            .insert({
+              title: result.title,
+              content: analysis.summary || result.description,
+              summary: analysis.summary,
+              url: result.url,
+              image_url: null, // Brave Search basic results don't include images
+              published_at: publishedAt,
+              source: extractDomain(result.url),
+              category: analysis.category || 'Market News',
+              sentiment: analysis.sentiment,
+              market_impact: analysis.marketImpact,
+              companies: analysis.companies,
+            })
+            .select()
+
+          if (error) {
+            console.error('Error inserting article:', error)
+          } else {
+            console.log(`Successfully processed: ${result.title}`)
+            processedArticles.push(result.title)
+          }
         }
+      } catch (searchError) {
+        console.error(`Error processing search query "${query}":`, searchError)
+        continue
       }
     }
 
@@ -134,13 +150,14 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         processed: processedArticles.length,
+        articles: processedArticles,
         searchesUsed: maxSearchesToday,
         remainingSearches: maxDailySearches - (currentSearches + maxSearchesToday)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error in fetch-news function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
@@ -148,8 +165,40 @@ serve(async (req) => {
   }
 })
 
+function isRelevantNewsSource(url: string, title: string): boolean {
+  const newsPatterns = [
+    'economictimes.indiatimes.com',
+    'business-standard.com',
+    'livemint.com',
+    'moneycontrol.com',
+    'financialexpress.com',
+    'zeebiz.com',
+    'cnbctv18.com',
+    'bloomberg.com',
+    'reuters.com',
+    'exchange4media.com',
+    'goodreturns.in'
+  ]
+  
+  const titleKeywords = ['stock market', 'nifty', 'sensex', 'bse', 'nse', 'shares', 'equity', 'trading']
+  
+  const isNewsSource = newsPatterns.some(pattern => url.toLowerCase().includes(pattern))
+  const hasRelevantKeywords = titleKeywords.some(keyword => title.toLowerCase().includes(keyword))
+  
+  return isNewsSource || hasRelevantKeywords
+}
+
+function extractPublishedDate(result: any): string {
+  // Try to extract date from result metadata
+  if (result.age) {
+    return new Date(Date.now() - (parseAge(result.age) * 1000)).toISOString()
+  }
+  
+  // Default to current time for fresh results
+  return new Date().toISOString()
+}
+
 function parseAge(ageString: string): number {
-  // Parse age strings like "2 hours ago", "1 day ago", etc.
   if (!ageString) return 0
   
   const parts = ageString.toLowerCase().split(' ')
@@ -163,12 +212,20 @@ function parseAge(ageString: string): number {
   if (unit.includes('day')) return value * 86400
   if (unit.includes('week')) return value * 604800
   
-  return 0 // Default to current time if can't parse
+  return 0
 }
 
 function extractDomain(url: string): string {
   try {
-    return new URL(url).hostname.replace('www.', '')
+    const domain = new URL(url).hostname.replace('www.', '')
+    // Clean up domain names for better display
+    if (domain.includes('economictimes')) return 'Economic Times'
+    if (domain.includes('moneycontrol')) return 'MoneyControl'
+    if (domain.includes('livemint')) return 'Mint'
+    if (domain.includes('business-standard')) return 'Business Standard'
+    if (domain.includes('financialexpress')) return 'Financial Express'
+    if (domain.includes('zeebiz')) return 'Zee Business'
+    return domain
   } catch {
     return 'Unknown Source'
   }
@@ -184,31 +241,24 @@ async function analyzeWithGemini(title: string, description: string, content: st
   try {
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiApiKey) {
-      console.log('Gemini API key not found, falling back to simple analysis')
+      console.log('Gemini API key not found, using fallback analysis')
       return fallbackAnalysis(title, description)
     }
 
-    const text = `${title} ${description} ${content}`.trim()
+    const text = `${title} ${description}`.trim()
     
-    const prompt = `Analyze this Indian stock market news article and provide a JSON response with the following structure:
+    const prompt = `Analyze this Indian stock market news and provide a JSON response:
     {
       "sentiment": "positive|negative|neutral",
       "marketImpact": "high|medium|low", 
       "companies": ["company1", "company2"],
-      "summary": "Brief 2-3 sentence summary",
+      "summary": "2-3 sentence summary focusing on market implications",
       "category": "Market News|Earnings|Policy|IPO|Merger|Other"
     }
 
-    Article: ${text}
+    News: ${text}
 
-    Focus on:
-    - Sentiment: How this news affects market sentiment (positive/negative/neutral)
-    - Market Impact: Potential impact on Indian markets (high/medium/low)
-    - Companies: Extract any Indian company names mentioned (use full company names)
-    - Summary: Concise summary focusing on market implications
-    - Category: Classify the type of news
-
-    Respond only with valid JSON.`
+    Focus on Indian market context. Extract Indian company names mentioned. Respond only with valid JSON.`
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -225,13 +275,13 @@ async function analyzeWithGemini(title: string, description: string, content: st
           temperature: 0.1,
           topK: 1,
           topP: 1,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 512,
         }
       })
     })
 
     if (!response.ok) {
-      console.error('Gemini API error:', response.status, await response.text())
+      console.error('Gemini API error:', response.status)
       return fallbackAnalysis(title, description)
     }
 
@@ -243,7 +293,6 @@ async function analyzeWithGemini(title: string, description: string, content: st
       return fallbackAnalysis(title, description)
     }
 
-    // Clean up the response to extract JSON
     const jsonMatch = generatedText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       console.error('No JSON found in Gemini response')
@@ -251,12 +300,12 @@ async function analyzeWithGemini(title: string, description: string, content: st
     }
 
     const analysis = JSON.parse(jsonMatch[0])
-    console.log('Gemini analysis:', analysis)
+    console.log('Gemini analysis successful')
     
     return {
       sentiment: analysis.sentiment || 'neutral',
       marketImpact: analysis.marketImpact || 'low',
-      companies: analysis.companies || extractCompanies(text),
+      companies: analysis.companies || [],
       summary: analysis.summary || description?.substring(0, 200) || title,
       category: analysis.category || 'Market News'
     }
@@ -276,14 +325,10 @@ function fallbackAnalysis(title: string, description: string): {
 } {
   const text = `${title} ${description}`.toLowerCase()
   
-  const sentiment = analyzeSentiment(text)
-  const marketImpact = analyzeMarketImpact(text)
-  const companies = extractCompanies(text)
-  
   return {
-    sentiment,
-    marketImpact,
-    companies,
+    sentiment: analyzeSentiment(text),
+    marketImpact: analyzeMarketImpact(text),
+    companies: extractCompanies(text),
     summary: description?.substring(0, 200) || title,
     category: 'Market News'
   }
@@ -315,9 +360,7 @@ function extractCompanies(text: string): string[] {
     'Reliance Industries', 'Tata Consultancy Services', 'HDFC Bank', 'Infosys', 'Hindustan Unilever',
     'ICICI Bank', 'Kotak Mahindra Bank', 'State Bank of India', 'Bharti Airtel', 'ITC',
     'Bajaj Finance', 'Wipro', 'Asian Paints', 'Maruti Suzuki', 'Larsen & Toubro',
-    'Titan Company', 'Nestle India', 'UltraTech Cement', 'HCL Technologies', 'Axis Bank',
-    'Mahindra & Mahindra', 'Bajaj Finserv', 'Tech Mahindra', 'Sun Pharmaceutical', 'Power Grid Corporation',
-    'NTPC', 'Tata Steel', 'IndusInd Bank', 'Adani Ports', 'JSW Steel'
+    'Titan Company', 'Nestle India', 'UltraTech Cement', 'HCL Technologies', 'Axis Bank'
   ]
   
   return nifty50Companies.filter(company => 
