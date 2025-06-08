@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -85,6 +86,18 @@ serve(async (req) => {
 
         console.log(`Processing article: ${result.title}`)
 
+        // Check if article already exists
+        const { data: existingArticle } = await supabaseClient
+          .from('news_articles')
+          .select('id')
+          .eq('url', result.url)
+          .single()
+
+        if (existingArticle) {
+          console.log(`Article already exists, skipping: ${result.title}`)
+          continue
+        }
+
         // Use Gemini AI for enhanced analysis
         const analysis = await analyzeWithGemini(
           result.title, 
@@ -94,7 +107,7 @@ serve(async (req) => {
         
         const { error } = await supabaseClient
           .from('news_articles')
-          .upsert({
+          .insert({
             title: result.title,
             content: analysis.summary || result.description,
             summary: analysis.summary,
@@ -106,9 +119,6 @@ serve(async (req) => {
             sentiment: analysis.sentiment,
             market_impact: analysis.marketImpact,
             companies: analysis.companies,
-          }, {
-            onConflict: 'url',
-            ignoreDuplicates: true
           })
 
         if (error) {
