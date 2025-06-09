@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import NiftyChart from '@/components/NiftyChart';
@@ -7,6 +6,7 @@ import MarketNews from '@/components/MarketNews';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { BarChart3, Newspaper, Target, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [loading] = useState(false);
@@ -19,6 +19,29 @@ const Index = () => {
     const interval = setInterval(() => {
       setLastUpdate(new Date().toLocaleTimeString());
     }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Trigger initial market analysis fetch
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        console.log('Triggering market events fetch...');
+        const { data, error } = await supabase.functions.invoke('fetch-news');
+        if (error) {
+          console.error('Error fetching market data:', error);
+        } else {
+          console.log('Market data fetch result:', data);
+        }
+      } catch (error) {
+        console.error('Error calling fetch-news function:', error);
+      }
+    };
+
+    // Trigger on load and then every 2 hours
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 2 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -145,7 +168,7 @@ const Index = () => {
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-xs text-slate-400">News auto-updating every 2 hours</span>
+              <span className="text-xs text-slate-400">Market events auto-updating every 2 hours</span>
             </div>
             <span className="text-xs text-slate-400">
               Last refresh: {lastUpdate}

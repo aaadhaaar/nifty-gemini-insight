@@ -4,19 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface ImpactAnalysisData {
   id: string;
-  news_article_id: string;
+  news_article_id: string | null;
   what_happened: string;
   why_matters: string;
   market_impact_description: string;
   expected_points_impact: number;
   confidence_score: number;
   created_at: string;
-  news_article?: {
-    title: string;
-    source: string;
-    sentiment: 'positive' | 'negative' | 'neutral';
-    companies: string[];
-  };
 }
 
 export const useImpactAnalysis = () => {
@@ -27,17 +21,9 @@ export const useImpactAnalysis = () => {
       
       const { data, error } = await supabase
         .from('market_analysis')
-        .select(`
-          *,
-          news_articles!inner(
-            title,
-            source,
-            sentiment,
-            companies
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) {
         console.error('Error fetching impact analysis:', error);
@@ -47,6 +33,6 @@ export const useImpactAnalysis = () => {
       console.log(`Fetched ${data?.length || 0} impact analysis records`);
       return data as ImpactAnalysisData[];
     },
-    refetchInterval: 60000, // Refetch every minute for realtime updates
+    refetchInterval: 30000, // Refetch every 30 seconds for more frequent updates
   });
 };
