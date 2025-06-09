@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Target, Zap, AlertTriangle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { Target, Zap, AlertTriangle, TrendingUp, TrendingDown, Activity, BarChart3, PieChart } from 'lucide-react';
 import { useImpactAnalysis } from '@/hooks/useImpactAnalysis';
 import ImpactChart from './ImpactChart';
 import LoadingSpinner from './LoadingSpinner';
@@ -38,12 +38,32 @@ const ImpactAnalysis = () => {
           articleCount: data.count
         };
       })
-      .slice(-12); // Show last 12 data points
+      .slice(-12);
   }, [impactData]);
 
-  const totalImpact = useMemo(() => {
-    if (!impactData) return 0;
-    return impactData.reduce((sum, item) => sum + (item.expected_points_impact || 0), 0);
+  const marketSummary = useMemo(() => {
+    if (!impactData || impactData.length === 0) return null;
+
+    const totalImpact = impactData.reduce((sum, item) => sum + (item.expected_points_impact || 0), 0);
+    const positiveEvents = impactData.filter(item => (item.expected_points_impact || 0) > 0);
+    const negativeEvents = impactData.filter(item => (item.expected_points_impact || 0) < 0);
+    const avgConfidence = impactData.reduce((sum, item) => sum + (item.confidence_score || 0), 0) / impactData.length;
+
+    // Identify key themes
+    const themes = impactData.map(item => item.why_matters.toLowerCase())
+      .join(' ')
+      .split(/[.,;]/)
+      .filter(phrase => phrase.trim().length > 10)
+      .slice(0, 3);
+
+    return {
+      totalImpact,
+      positiveEvents: positiveEvents.length,
+      negativeEvents: negativeEvents.length,
+      avgConfidence: Math.round(avgConfidence),
+      themes,
+      latestUpdate: impactData[0]?.created_at
+    };
   }, [impactData]);
 
   if (isLoading) {
@@ -81,8 +101,8 @@ const ImpactAnalysis = () => {
         </div>
         <div className="text-center py-8 text-slate-400">
           <Activity className="w-8 h-8 mx-auto mb-2" />
-          <p>No impact analysis data available yet</p>
-          <p className="text-sm mt-1">Analysis will appear as news articles are processed</p>
+          <p>No market analysis data available yet</p>
+          <p className="text-sm mt-1">Analysis will appear as market events are processed</p>
         </div>
       </div>
     );
@@ -95,8 +115,8 @@ const ImpactAnalysis = () => {
           <Target className="w-4 h-4 md:w-5 md:h-5 text-white" />
         </div>
         <div className="flex-1">
-          <h2 className="text-lg md:text-xl font-bold text-white">Impact Analysis</h2>
-          <p className="text-sm text-slate-400">AI-powered market assessment</p>
+          <h2 className="text-lg md:text-xl font-bold text-white">Market Impact Analysis</h2>
+          <p className="text-sm text-slate-400">Comprehensive AI-powered market assessment</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
@@ -104,21 +124,69 @@ const ImpactAnalysis = () => {
         </div>
       </div>
 
+      {/* Market Overview Cards */}
+      {marketSummary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-3">
+            <div className="flex items-center space-x-2 mb-1">
+              <BarChart3 className="w-4 h-4 text-blue-400" />
+              <span className="text-xs text-blue-300">Net Impact</span>
+            </div>
+            <div className={`text-lg font-bold ${
+              marketSummary.totalImpact >= 0 ? 'text-emerald-400' : 'text-red-400'
+            }`}>
+              {marketSummary.totalImpact > 0 ? '+' : ''}{marketSummary.totalImpact}
+            </div>
+            <div className="text-xs text-slate-400">Nifty Points</div>
+          </div>
+
+          <div className="bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 rounded-xl p-3">
+            <div className="flex items-center space-x-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-300">Positive</span>
+            </div>
+            <div className="text-lg font-bold text-emerald-400">{marketSummary.positiveEvents}</div>
+            <div className="text-xs text-slate-400">Events</div>
+          </div>
+
+          <div className="bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-500/30 rounded-xl p-3">
+            <div className="flex items-center space-x-2 mb-1">
+              <TrendingDown className="w-4 h-4 text-red-400" />
+              <span className="text-xs text-red-300">Negative</span>
+            </div>
+            <div className="text-lg font-bold text-red-400">{marketSummary.negativeEvents}</div>
+            <div className="text-xs text-slate-400">Events</div>
+          </div>
+
+          <div className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-xl p-3">
+            <div className="flex items-center space-x-2 mb-1">
+              <PieChart className="w-4 h-4 text-purple-400" />
+              <span className="text-xs text-purple-300">Confidence</span>
+            </div>
+            <div className="text-lg font-bold text-purple-400">{marketSummary.avgConfidence}%</div>
+            <div className="text-xs text-slate-400">Average</div>
+          </div>
+        </div>
+      )}
+
       {/* Realtime Chart */}
       <div className="mb-6">
         <ImpactChart data={chartData} />
       </div>
 
-      {/* Impact Cards */}
+      {/* Market Events Analysis */}
       <div className="space-y-4">
         {impactData.slice(0, 5).map((item) => (
           <div key={item.id} className="border border-slate-700/50 rounded-xl p-4 hover:bg-slate-700/30 transition-all duration-300">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 space-y-3 sm:space-y-0">
               <div className="flex-1">
-                <h3 className="text-sm md:text-base font-semibold text-white mb-1 leading-tight">
-                  {item.news_article?.title || 'News Article'}
-                </h3>
-                <p className="text-xs text-slate-400">{item.news_article?.source || 'Unknown Source'}</p>
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                  <span className="text-xs text-slate-400">Market Event Analysis</span>
+                  <span className="text-xs text-slate-500">
+                    {new Date(item.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
               </div>
               
               <div className="flex items-center space-x-2 flex-shrink-0">
@@ -155,27 +223,45 @@ const ImpactAnalysis = () => {
               <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
                 <div className="flex items-center space-x-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs font-medium text-purple-300">Why It Matters</span>
+                  <span className="text-xs font-medium text-purple-300">Market Impact</span>
                 </div>
                 <p className="text-sm text-slate-300 leading-relaxed">{item.why_matters}</p>
               </div>
+
+              {item.market_impact_description && (
+                <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Target className="w-4 h-4 text-orange-400" />
+                    <span className="text-xs font-medium text-orange-300">Detailed Analysis</span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">{item.market_impact_description}</p>
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Market Summary */}
-      <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-        <div className="flex items-center space-x-2 mb-2">
-          <AlertTriangle className="w-4 h-4 text-blue-400" />
-          <span className="text-sm font-medium text-blue-300">Market Summary</span>
+      {/* Comprehensive Market Summary */}
+      {marketSummary && (
+        <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+          <div className="flex items-center space-x-2 mb-3">
+            <Target className="w-4 h-4 text-indigo-400" />
+            <span className="text-sm font-medium text-indigo-300">Market Overview</span>
+          </div>
+          <p className="text-sm text-slate-300 mb-3">
+            Current market analysis shows a net {marketSummary.totalImpact >= 0 ? 'positive' : 'negative'} sentiment 
+            with an estimated impact of {marketSummary.totalImpact > 0 ? '+' : ''}{marketSummary.totalImpact} points 
+            on Nifty 50. Analysis includes {marketSummary.positiveEvents} positive and {marketSummary.negativeEvents} negative 
+            market events with {marketSummary.avgConfidence}% average confidence.
+          </p>
+          {marketSummary.latestUpdate && (
+            <div className="text-xs text-slate-400">
+              Last updated: {new Date(marketSummary.latestUpdate).toLocaleString()}
+            </div>
+          )}
         </div>
-        <p className="text-sm text-slate-300">
-          Current analysis shows a net {totalImpact >= 0 ? 'positive' : 'negative'} impact of {totalImpact > 0 ? '+' : ''}{totalImpact} points 
-          based on {impactData.length} analyzed {impactData.length === 1 ? 'article' : 'articles'}. 
-          {impactData.length > 0 && ` Latest update: ${new Date(impactData[0].created_at).toLocaleTimeString()}`}
-        </p>
-      </div>
+      )}
     </div>
   );
 };
