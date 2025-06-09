@@ -15,7 +15,7 @@ const Header = () => {
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse"></div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold gradient-text">Nifty Insights</h1>
+              <h1 className="text-2xl font-bold gradient-text">The Undercurrent</h1>
               <p className="text-sm text-gray-400">AI-Powered Market Analysis</p>
             </div>
           </div>
