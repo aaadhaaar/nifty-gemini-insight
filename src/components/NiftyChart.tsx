@@ -1,29 +1,53 @@
 
 import React, { useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 const NiftyChart = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Create the iframe element
-    const iframe = document.createElement('iframe');
-    iframe.style.border = 'none';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.setAttribute('data-widget-name', 'ChartWidget');
-    iframe.src = 'https://widget.darqube.com/chart-widget?token=684713f3f917956d1489ae03';
-    iframe.id = 'ChartWidget-umipcro';
-    iframe.allowFullscreen = true;
-
+    // Clear any existing content
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
-      containerRef.current.appendChild(iframe);
+    }
+
+    // Create the Finlogix container
+    const finlogixContainer = document.createElement('div');
+    finlogixContainer.className = 'finlogix-container';
+
+    // Create and load the Finlogix script
+    const widgetScript = document.createElement('script');
+    widgetScript.type = 'text/javascript';
+    widgetScript.src = 'https://widget.finlogix.com/Widget.js';
+    
+    widgetScript.onload = () => {
+      // Initialize the widget after the script loads
+      if (window.Widget) {
+        window.Widget.init({
+          widgetId: "4addd754-ee90-475f-9eb5-31110d1ab21a",
+          type: "SingleSymbol",
+          language: "en",
+          showBrand: true,
+          isShowTradeButton: true,
+          isShowBeneathLink: true,
+          isShowDataFromACYInfo: true,
+          symbolName: "INDIA50",
+          withButton: false,
+          isAdaptive: true
+        });
+      }
+    };
+
+    if (containerRef.current) {
+      containerRef.current.appendChild(finlogixContainer);
+      document.head.appendChild(widgetScript);
     }
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+      // Cleanup: remove script when component unmounts
+      const existingScript = document.querySelector('script[src="https://widget.finlogix.com/Widget.js"]');
+      if (existingScript) {
+        existingScript.remove();
       }
     };
   }, []);
@@ -41,15 +65,13 @@ const NiftyChart = () => {
         </div>
       </div>
 
-      {/* Darqube Chart Container */}
+      {/* Finlogix Chart Container */}
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="darqube-widget-container h-full"
+          className="finlogix-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
-        >
-          <div className="darqube-widget-container__widget h-full"></div>
-        </div>
+        />
       </div>
 
       {/* Stats Grid */}
@@ -70,5 +92,25 @@ const NiftyChart = () => {
     </div>
   );
 };
+
+// Extend the Window interface to include the Widget object
+declare global {
+  interface Window {
+    Widget: {
+      init: (config: {
+        widgetId: string;
+        type: string;
+        language: string;
+        showBrand: boolean;
+        isShowTradeButton: boolean;
+        isShowBeneathLink: boolean;
+        isShowDataFromACYInfo: boolean;
+        symbolName: string;
+        withButton: boolean;
+        isAdaptive: boolean;
+      }) => void;
+    };
+  }
+}
 
 export default NiftyChart;
