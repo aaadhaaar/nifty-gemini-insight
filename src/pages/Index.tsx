@@ -1,18 +1,21 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import NiftyChart from '@/components/NiftyChart';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { BarChart3, Newspaper, Target, Menu, X } from 'lucide-react';
+import { BarChart3, Newspaper, Target, Menu, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [lastApiCall, setLastApiCall] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Auto-update timestamp every minute
   useEffect(() => {
@@ -23,34 +26,68 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Trigger initial market analysis fetch
+  // Function to fetch market data
+  const fetchMarketData = async (isManual = false) => {
+    try {
+      console.log('Triggering market events fetch...');
+      setIsRefreshing(true);
+      
+      const { data, error } = await supabase.functions.invoke('fetch-news');
+      if (error) {
+        console.error('Error fetching market data:', error);
+      } else {
+        console.log('Market data fetch result:', data);
+        setLastApiCall(new Date());
+      }
+    } catch (error) {
+      console.error('Error calling fetch-news function:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Check if we should fetch data automatically (only if no recent API call)
   useEffect(() => {
-    const fetchMarketData = async () => {
-      try {
-        console.log('Triggering market events fetch...');
-        const { data, error } = await supabase.functions.invoke('fetch-news');
-        if (error) {
-          console.error('Error fetching market data:', error);
-        } else {
-          console.log('Market data fetch result:', data);
-        }
-      } catch (error) {
-        console.error('Error calling fetch-news function:', error);
+    const checkAndFetch = () => {
+      const now = new Date();
+      
+      // Only fetch if:
+      // 1. No previous API call recorded, OR
+      // 2. Last API call was more than 2 hours ago
+      if (!lastApiCall || (now.getTime() - lastApiCall.getTime()) > 2 * 60 * 60 * 1000) {
+        fetchMarketData();
       }
     };
 
-    // Trigger on load and then every 2 hours
-    fetchMarketData();
-    const interval = setInterval(fetchMarketData, 2 * 60 * 60 * 1000);
+    // Check on mount
+    checkAndFetch();
+
+    // Set up interval to check every 30 minutes
+    const interval = setInterval(checkAndFetch, 30 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [lastApiCall]);
+
+  const handleManualRefresh = () => {
+    fetchMarketData(true);
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'impact', label: 'Analysis', icon: Target }
   ];
+
+  const getTimeSinceLastCall = () => {
+    if (!lastApiCall) return 'Never';
+    
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - lastApiCall.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    return `${diffInHours}h ago`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -68,10 +105,15 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-xs text-slate-400">Auto-sync</span>
-            </div>
+            <Button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:text-white hover:bg-slate-800"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
             <Button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               size="sm"
@@ -167,11 +209,13 @@ const Index = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700/50 p-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-xs text-slate-400">Market events auto-updating every 2 hours</span>
+              <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
+              <span className="text-xs text-slate-400">
+                Last API call: {getTimeSinceLastCall()} • Auto-sync every 2 hours
+              </span>
             </div>
             <span className="text-xs text-slate-400">
-              Last refresh: {lastUpdate}
+              UI refresh: {lastUpdate}
             </span>
           </div>
         </div>
