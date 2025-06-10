@@ -14,38 +14,16 @@ const NiftyChart = () => {
     iframe.setAttribute('data-widget-name', 'ChartWidget');
     iframe.src = 'https://widget.darqube.com/chart-widget?token=684713f3f917956d1489ae03';
     iframe.id = 'ChartWidget-umipcro';
-
-    // Create the script for handling messages
-    const script = document.createElement('script');
-    script.innerHTML = `
-      window.top.addEventListener("message", function(msg) {
-        const widget = document.getElementById('ChartWidget-umipcro');
-        
-        if (!widget) return;
-        
-        const styles = msg.data?.styles;
-        const token = msg.data?.token;
-        const urlToken = new URL(widget.src)?.searchParams?.get?.('token');
-        if (styles && token === urlToken) {
-          Object.keys(styles).forEach(key => widget.style.setProperty(key, styles[key]))
-        }
-      });
-    `;
+    iframe.allowFullscreen = true;
 
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
       containerRef.current.appendChild(iframe);
-      document.head.appendChild(script);
     }
 
     return () => {
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
-      }
-      // Clean up script
-      const existingScript = document.querySelector('script[data-chart-widget]');
-      if (existingScript) {
-        document.head.removeChild(existingScript);
       }
     };
   }, []);
@@ -64,7 +42,7 @@ const NiftyChart = () => {
       </div>
 
       {/* Darqube Chart Container */}
-      <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden">
+      <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
           className="darqube-widget-container h-full"
