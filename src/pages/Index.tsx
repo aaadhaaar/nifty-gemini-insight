@@ -5,6 +5,7 @@ import NiftyChart from '@/components/NiftyChart';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import UserProfile from '@/components/UserProfile';
 import { BarChart3, Newspaper, Target, Menu, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -105,6 +106,7 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2">
+            <UserProfile />
             <Button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
