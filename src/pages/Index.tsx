@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import NiftyChart from '@/components/NiftyChart';
+import ProfitWidget from '@/components/ProfitWidget';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
 import TechnicalAnalysis from '@/components/TechnicalAnalysis';
@@ -318,7 +318,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto space-y-6">
             {activeTab === 'overview' && (
               <>
-                <NiftyChart />
+                <ProfitWidget />
                 <div className="grid gap-6 lg:grid-cols-2">
                   <div className="lg:col-span-2">
                     <ImpactAnalysis />
