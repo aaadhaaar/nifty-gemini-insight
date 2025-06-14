@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, BarChart3, Target } from 'lucide-react';
 
 interface Stock {
@@ -13,59 +13,69 @@ interface ImpactAnalysisProps {
 }
 
 const ImpactAnalysis: React.FC<ImpactAnalysisProps> = ({ selectedStock }) => {
-  // Generate mock data based on selected stock
-  const generateMockData = (stock?: Stock) => {
-    if (!stock) {
-      return {
-        overallSentiment: 'neutral',
-        sentimentScore: 0,
-        priceTarget: 0,
-        keyFactors: [],
-        riskFactors: [],
-        opportunities: []
+  // Memoize the generated data to prevent it from changing on re-renders
+  const analysisData = useMemo(() => {
+    const generateMockData = (stock?: Stock) => {
+      if (!stock) {
+        return {
+          overallSentiment: 'neutral',
+          sentimentScore: 0,
+          priceTarget: 0,
+          keyFactors: [],
+          riskFactors: [],
+          opportunities: []
+        };
+      }
+
+      // Mock data generation based on stock characteristics
+      const sectorMultipliers = {
+        'Banking': { sentiment: 0.1, volatility: 0.8 },
+        'IT Services': { sentiment: 0.3, volatility: 0.6 },
+        'FMCG': { sentiment: 0.2, volatility: 0.4 },
+        'Oil & Gas': { sentiment: -0.1, volatility: 1.2 },
+        'Pharmaceuticals': { sentiment: 0.15, volatility: 0.7 },
+        'Automobiles': { sentiment: 0.05, volatility: 0.9 }
       };
-    }
 
-    // Mock data generation based on stock characteristics
-    const sectorMultipliers = {
-      'Banking': { sentiment: 0.1, volatility: 0.8 },
-      'IT Services': { sentiment: 0.3, volatility: 0.6 },
-      'FMCG': { sentiment: 0.2, volatility: 0.4 },
-      'Oil & Gas': { sentiment: -0.1, volatility: 1.2 },
-      'Pharmaceuticals': { sentiment: 0.15, volatility: 0.7 },
-      'Automobiles': { sentiment: 0.05, volatility: 0.9 }
+      const multiplier = sectorMultipliers[stock.sector as keyof typeof sectorMultipliers] || { sentiment: 0, volatility: 0.8 };
+      
+      // Use stock symbol as seed for consistent random values
+      const seed = stock.symbol.charCodeAt(0) + stock.symbol.charCodeAt(1) + stock.symbol.length;
+      const seededRandom = (seed: number) => {
+        const x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+      };
+      
+      const baseScore = seededRandom(seed) * 40 - 20; // -20 to +20
+      const sentimentScore = Math.round(baseScore + multiplier.sentiment * 100);
+      
+      return {
+        overallSentiment: sentimentScore > 5 ? 'bullish' : sentimentScore < -5 ? 'bearish' : 'neutral',
+        sentimentScore,
+        priceTarget: Math.round(seededRandom(seed + 1) * 20 + 10), // 10-30% target
+        keyFactors: [
+          `Strong ${stock.sector.toLowerCase()} sector fundamentals`,
+          `Positive quarterly earnings outlook for ${stock.symbol}`,
+          `Institutional investor confidence in ${stock.name}`,
+          `Technical indicators showing bullish momentum`
+        ],
+        riskFactors: [
+          `Market volatility affecting ${stock.sector} sector`,
+          `Regulatory changes impacting ${stock.symbol}`,
+          `Global economic headwinds`,
+          `Competition in ${stock.sector.toLowerCase()} space`
+        ],
+        opportunities: [
+          `${stock.sector} sector growth potential`,
+          `Digital transformation initiatives at ${stock.symbol}`,
+          `Expansion into new markets`,
+          `Strategic partnerships and acquisitions`
+        ]
+      };
     };
 
-    const multiplier = sectorMultipliers[stock.sector as keyof typeof sectorMultipliers] || { sentiment: 0, volatility: 0.8 };
-    const baseScore = Math.random() * 40 - 20; // -20 to +20
-    const sentimentScore = Math.round(baseScore + multiplier.sentiment * 100);
-    
-    return {
-      overallSentiment: sentimentScore > 5 ? 'bullish' : sentimentScore < -5 ? 'bearish' : 'neutral',
-      sentimentScore,
-      priceTarget: Math.round(Math.random() * 20 + 10), // 10-30% target
-      keyFactors: [
-        `Strong ${stock.sector.toLowerCase()} sector fundamentals`,
-        `Positive quarterly earnings outlook for ${stock.symbol}`,
-        `Institutional investor confidence in ${stock.name}`,
-        `Technical indicators showing bullish momentum`
-      ],
-      riskFactors: [
-        `Market volatility affecting ${stock.sector} sector`,
-        `Regulatory changes impacting ${stock.symbol}`,
-        `Global economic headwinds`,
-        `Competition in ${stock.sector.toLowerCase()} space`
-      ],
-      opportunities: [
-        `${stock.sector} sector growth potential`,
-        `Digital transformation initiatives at ${stock.symbol}`,
-        `Expansion into new markets`,
-        `Strategic partnerships and acquisitions`
-      ]
-    };
-  };
-
-  const analysisData = generateMockData(selectedStock);
+    return generateMockData(selectedStock);
+  }, [selectedStock]);
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
