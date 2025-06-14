@@ -1,7 +1,7 @@
 
 export class ApiUsageManager {
   private supabaseClient: any
-  private maxDailySearches = 8 // Reduced from 55 for free tier optimization
+  private maxDailySearches = 60 // Increased from 8 to utilize full free tier limit
 
   constructor(supabaseClient: any) {
     this.supabaseClient = supabaseClient
@@ -20,7 +20,7 @@ export class ApiUsageManager {
     const remainingSearches = this.maxDailySearches - currentSearches
     const canProceed = currentSearches < this.maxDailySearches
 
-    console.log(`Optimized usage: ${currentSearches}/${this.maxDailySearches} searches (free tier)`)
+    console.log(`Usage: ${currentSearches}/${this.maxDailySearches} searches (free tier)`)
     
     return { canProceed, currentSearches, remainingSearches }
   }

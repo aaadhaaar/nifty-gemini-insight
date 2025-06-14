@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import ProfitWidget from '@/components/ProfitWidget';
@@ -101,7 +100,7 @@ const Index = () => {
 
   // Conservative API call limits for free tier
   const shouldMakeApiCall = () => {
-    if (apiCallsToday >= 8) return false; // Strict daily limit for free tier
+    if (apiCallsToday >= 60) return false; // Updated daily limit to 60
     if (!lastApiCall) return true; // First call of the session
     
     const now = new Date();
@@ -111,15 +110,15 @@ const Index = () => {
     return timeSinceLastCall >= optimizedInterval;
   };
 
-  // Function to fetch market data with conservative approach
+  // Function to fetch market data
   const fetchMarketData = async () => {
     if (!shouldMakeApiCall()) {
-      console.log('Skipping API call - conserving free tier usage');
+      console.log('Skipping API call - conserving usage');
       return;
     }
 
-    if (apiCallsToday >= 8) {
-      console.log('Daily API limit reached for free tier');
+    if (apiCallsToday >= 60) {
+      console.log('Daily API limit reached (60 calls)');
       return;
     }
 
@@ -193,7 +192,7 @@ const Index = () => {
 
   const getNextCallTime = () => {
     if (!lastApiCall) return 'Soon';
-    if (apiCallsToday >= 8) return 'Tomorrow';
+    if (apiCallsToday >= 60) return 'Tomorrow'; // Updated limit check
     
     const optimizedInterval = getOptimizedInterval();
     const nextCallTime = new Date(lastApiCall.getTime() + optimizedInterval);
@@ -322,9 +321,9 @@ const Index = () => {
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${apiCallsToday >= 8 ? 'bg-red-400' : apiCallsToday >= 5 ? 'bg-yellow-400' : 'bg-green-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${apiCallsToday >= 60 ? 'bg-red-400' : apiCallsToday >= 40 ? 'bg-yellow-400' : 'bg-green-400'}`}></div>
                 <span className="text-xs text-slate-400">
-                  {apiCallsToday}/8 calls • Last: {getTimeSinceLastCall()}
+                  {apiCallsToday}/60 calls • Last: {getTimeSinceLastCall()}
                 </span>
               </div>
               <div className="text-xs text-slate-500">
