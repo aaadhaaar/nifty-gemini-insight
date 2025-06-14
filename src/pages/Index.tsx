@@ -7,7 +7,7 @@ import MarketNews from '@/components/MarketNews';
 import TechnicalAnalysis from '@/components/TechnicalAnalysis';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import UserProfile from '@/components/UserProfile';
-import { BarChart3, Newspaper, Target, Menu, X, RefreshCw, TrendingUp } from 'lucide-react';
+import { BarChart3, Newspaper, Target, Menu, X, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,7 +17,6 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lastApiCall, setLastApiCall] = useState<Date | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [apiCallsToday, setApiCallsToday] = useState(0);
   const [userActive, setUserActive] = useState(true);
   const [lastActivity, setLastActivity] = useState(new Date());
@@ -57,9 +56,9 @@ const Index = () => {
     const inactivityTimer = setInterval(() => {
       const now = new Date();
       const timeSinceActivity = now.getTime() - lastActivity.getTime();
-      const fiveMinutes = 5 * 60 * 1000;
+      const tenMinutes = 10 * 60 * 1000;
       
-      if (timeSinceActivity > fiveMinutes) {
+      if (timeSinceActivity > tenMinutes) {
         setUserActive(false);
       }
     }, 60000);
@@ -81,52 +80,51 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Smart interval calculation based on time and activity
-  const getSmartInterval = () => {
+  // Conservative interval calculation for free tier optimization
+  const getOptimizedInterval = () => {
     const now = new Date();
     const hour = now.getHours();
     
-    // Market hours (9 AM to 4 PM IST) - more frequent
+    // Market hours (9 AM to 4 PM IST) - moderate frequency only if user is active
     if (hour >= 9 && hour <= 16) {
-      return userActive ? 45 * 60 * 1000 : 90 * 60 * 1000; // 45min active, 90min inactive
+      return userActive ? 2 * 60 * 60 * 1000 : 4 * 60 * 60 * 1000; // 2hr active, 4hr inactive
     }
-    // Evening (5 PM to 10 PM) - moderate frequency
+    // Evening (5 PM to 10 PM) - less frequent
     else if (hour >= 17 && hour <= 22) {
-      return userActive ? 90 * 60 * 1000 : 3 * 60 * 60 * 1000; // 90min active, 3hr inactive
+      return userActive ? 4 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000; // 4hr active, 8hr inactive
     }
     // Night (11 PM to 8 AM) - very infrequent
     else {
-      return 6 * 60 * 60 * 1000; // 6 hours regardless of activity
+      return 12 * 60 * 60 * 1000; // 12 hours regardless of activity
     }
   };
 
-  // Check if we should make an API call
+  // Conservative API call limits for free tier
   const shouldMakeApiCall = () => {
-    if (apiCallsToday >= 60) return false; // Daily limit reached
+    if (apiCallsToday >= 8) return false; // Strict daily limit for free tier
     if (!lastApiCall) return true; // First call of the session
     
     const now = new Date();
     const timeSinceLastCall = now.getTime() - lastApiCall.getTime();
-    const smartInterval = getSmartInterval();
+    const optimizedInterval = getOptimizedInterval();
     
-    return timeSinceLastCall >= smartInterval;
+    return timeSinceLastCall >= optimizedInterval;
   };
 
-  // Function to fetch market data
-  const fetchMarketData = async (isManual = false) => {
-    if (!isManual && !shouldMakeApiCall()) {
-      console.log('Skipping API call - not needed yet or daily limit reached');
+  // Function to fetch market data with conservative approach
+  const fetchMarketData = async () => {
+    if (!shouldMakeApiCall()) {
+      console.log('Skipping API call - conserving free tier usage');
       return;
     }
 
-    if (apiCallsToday >= 60) {
-      console.log('Daily API limit reached');
+    if (apiCallsToday >= 8) {
+      console.log('Daily API limit reached for free tier');
       return;
     }
 
     try {
-      console.log('Triggering market events fetch...');
-      setIsRefreshing(true);
+      console.log('Triggering optimized market events fetch...');
       
       const { data, error } = await supabase.functions.invoke('fetch-news');
       if (error) {
@@ -147,43 +145,33 @@ const Index = () => {
       }
     } catch (error) {
       console.error('Error calling fetch-news function:', error);
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
-  // Smart auto-fetch system
+  // Smart auto-fetch system optimized for free tier
   useEffect(() => {
-    // Initial check - only fetch if really needed (no data from today)
+    // Initial check - only fetch if really needed and no recent data
     const checkInitialFetch = () => {
       const storedDate = localStorage.getItem('lastApiCallDate');
       const today = new Date().toDateString();
       
-      // Only fetch on first load if no data from today
-      if (storedDate !== today && apiCallsToday === 0) {
+      // Only fetch on first load if no data from today and user is active
+      if (storedDate !== today && apiCallsToday === 0 && userActive) {
         fetchMarketData();
       }
     };
 
     checkInitialFetch();
 
-    // Set up smart interval checking
+    // Set up conservative interval checking
     const smartInterval = setInterval(() => {
-      if (shouldMakeApiCall()) {
+      if (shouldMakeApiCall() && userActive) {
         fetchMarketData();
       }
-    }, 30 * 60 * 1000); // Check every 30 minutes
+    }, 60 * 60 * 1000); // Check every hour instead of 30 minutes
 
     return () => clearInterval(smartInterval);
   }, [apiCallsToday, lastApiCall, userActive]);
-
-  const handleManualRefresh = () => {
-    if (apiCallsToday >= 60) {
-      console.log('Cannot refresh: Daily limit reached');
-      return;
-    }
-    fetchMarketData(true);
-  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -205,10 +193,10 @@ const Index = () => {
 
   const getNextCallTime = () => {
     if (!lastApiCall) return 'Soon';
-    if (apiCallsToday >= 60) return 'Tomorrow';
+    if (apiCallsToday >= 8) return 'Tomorrow';
     
-    const smartInterval = getSmartInterval();
-    const nextCallTime = new Date(lastApiCall.getTime() + smartInterval);
+    const optimizedInterval = getOptimizedInterval();
+    const nextCallTime = new Date(lastApiCall.getTime() + optimizedInterval);
     const now = new Date();
     
     if (nextCallTime <= now) return 'Soon';
@@ -236,15 +224,6 @@ const Index = () => {
           
           <div className="flex items-center space-x-2">
             <UserProfile />
-            <Button
-              onClick={handleManualRefresh}
-              disabled={isRefreshing || apiCallsToday >= 60}
-              size="sm"
-              variant="ghost"
-              className="text-slate-300 hover:text-white hover:bg-slate-800"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
             <Button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               size="sm"
@@ -338,23 +317,26 @@ const Index = () => {
           </div>
         )}
 
-        {/* Enhanced Status Bar */}
+        {/* Optimized Status Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700/50 p-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : apiCallsToday >= 60 ? 'bg-red-400' : 'bg-green-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${apiCallsToday >= 8 ? 'bg-red-400' : apiCallsToday >= 5 ? 'bg-yellow-400' : 'bg-green-400'}`}></div>
                 <span className="text-xs text-slate-400">
-                  {apiCallsToday}/60 calls • Last: {getTimeSinceLastCall()}
+                  {apiCallsToday}/8 calls • Last: {getTimeSinceLastCall()}
                 </span>
               </div>
               <div className="text-xs text-slate-500">
                 Next: {getNextCallTime()} • {userActive ? 'Active' : 'Idle'}
               </div>
             </div>
-            <span className="text-xs text-slate-400">
-              UI: {lastUpdate}
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-green-400">Free Tier</span>
+              <span className="text-xs text-slate-400">
+                UI: {lastUpdate}
+              </span>
+            </div>
           </div>
         </div>
       </main>

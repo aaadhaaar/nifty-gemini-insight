@@ -33,12 +33,20 @@ export class NewsSearcher {
     ]
   }
 
+  // Optimized queries for free tier - more focused and efficient
+  getOptimizedMarketEventQueries(): string[] {
+    return [
+      'Indian stock market Nifty Sensex latest news today RBI policy earnings impact',
+      'India IPO FII investment rupee forex crude oil market news analysis today'
+    ]
+  }
+
   async searchMarketEvents(query: string): Promise<MarketEvent[]> {
-    console.log(`Searching for market events with AI analysis: ${query}`)
+    console.log(`Searching for market events with optimized AI analysis: ${query}`)
     
     try {
-      // Use Brave Search with AI answers enabled
-      const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&freshness=pd&country=IN&search_lang=en&result_filter=web&extra_snippets=true&summary=true`, {
+      // Use Brave Search with optimized parameters for free tier
+      const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&freshness=pd&country=IN&search_lang=en&result_filter=web&extra_snippets=true&summary=true`, {
         headers: {
           'X-Subscription-Token': this.braveApiKey,
           'Accept': 'application/json',
@@ -54,11 +62,11 @@ export class NewsSearcher {
       const results = searchData.web?.results || []
       const aiSummary = searchData.summarizer?.summary || ''
       
-      console.log(`Found ${results.length} results with AI summary for market events`)
+      console.log(`Found ${results.length} results with AI summary for optimized market events`)
 
       const marketEvents: MarketEvent[] = []
 
-      // Process AI summary if available
+      // Process AI summary if available - prioritize this for free tier efficiency
       if (aiSummary && aiSummary.length > 50) {
         marketEvents.push({
           title: `Market Intelligence: ${this.extractEventTitle(query)}`,
@@ -73,14 +81,14 @@ export class NewsSearcher {
         })
       }
 
-      // Process top search results for additional context
-      for (const result of results.slice(0, 5)) {
+      // Process fewer search results for efficiency (reduced from 5 to 3)
+      for (const result of results.slice(0, 3)) {
         if (!result.title || !result.description) continue
 
         if (isRelevantMarketNews(result.title, result.description)) {
           const freshnessScore = calculateFreshnessScore(result.title, result.description)
           
-          if (freshnessScore > 30) { // Only high-relevance items
+          if (freshnessScore > 40) { // Slightly higher threshold for quality
             marketEvents.push({
               title: result.title,
               description: result.description,
@@ -90,7 +98,7 @@ export class NewsSearcher {
               timestamp: new Date().toISOString(),
               freshness_score: freshnessScore,
               event_type: this.categorizeEvent(result.title + ' ' + result.description),
-              confidence: Math.min(95, freshnessScore + 20)
+              confidence: Math.min(95, freshnessScore + 15)
             })
           }
         }
@@ -98,7 +106,7 @@ export class NewsSearcher {
 
       return marketEvents.sort((a, b) => b.freshness_score - a.freshness_score)
     } catch (error) {
-      console.error(`Error processing market events query "${query}":`, error)
+      console.error(`Error processing optimized market events query "${query}":`, error)
       return []
     }
   }

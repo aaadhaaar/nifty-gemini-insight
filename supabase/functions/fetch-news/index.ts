@@ -22,16 +22,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Starting AI-powered market events fetch...')
+    console.log('Starting optimized market events fetch for free tier...')
     
-    // Initialize API usage manager
+    // Initialize API usage manager with conservative limits
     const apiManager = new ApiUsageManager(supabaseClient)
     const { canProceed, currentSearches, remainingSearches } = await apiManager.checkDailyUsage()
 
     if (!canProceed) {
-      console.log(`Daily limit reached: ${currentSearches}/55`)
+      console.log(`Free tier daily limit reached: ${currentSearches}/8`)
       return new Response(
-        JSON.stringify({ success: false, message: 'Daily API limit reached' }),
+        JSON.stringify({ success: false, message: 'Daily API limit reached for free tier' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -41,12 +41,12 @@ serve(async (req) => {
 
     // Initialize news searcher for market events
     const newsSearcher = new NewsSearcher(Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '')
-    const searchQueries = newsSearcher.getMarketEventQueries()
+    const searchQueries = newsSearcher.getOptimizedMarketEventQueries() // Use optimized queries
     
-    const maxSearchesToday = Math.min(6, remainingSearches) // Reduced since we're getting more focused results
+    const maxSearchesToday = Math.min(2, remainingSearches) // Very conservative: max 2 searches per call
     const allMarketEvents = []
 
-    // Search for market events with AI analysis
+    // Search for market events with optimized approach
     for (let i = 0; i < maxSearchesToday; i++) {
       const query = searchQueries[i]
       const marketEvents = await newsSearcher.searchMarketEvents(query)
@@ -58,9 +58,9 @@ serve(async (req) => {
 
     // Sort by confidence and freshness
     allMarketEvents.sort((a, b) => (b.confidence * b.freshness_score) - (a.confidence * a.freshness_score))
-    const topMarketEvents = allMarketEvents.slice(0, 15)
+    const topMarketEvents = allMarketEvents.slice(0, 8) // Reduced from 15 for efficiency
 
-    console.log(`Collected ${topMarketEvents.length} AI-analyzed market events`)
+    console.log(`Collected ${topMarketEvents.length} AI-analyzed market events (optimized for free tier)`)
 
     // Store market events as structured news articles
     for (const event of topMarketEvents) {
@@ -74,12 +74,12 @@ serve(async (req) => {
           market_impact: this.determineImpact(event.confidence),
           category: event.event_type,
           source: event.source,
-          url: null, // No specific URL for AI-generated insights
+          url: null,
           companies: this.extractCompanies(event.description),
         })
     }
 
-    // Generate enhanced market analysis from events
+    // Generate enhanced market analysis from events with batch processing
     if (topMarketEvents.length > 0) {
       await generateMarketAnalysis(supabaseClient, topMarketEvents)
     }
@@ -90,12 +90,13 @@ serve(async (req) => {
         eventsProcessed: topMarketEvents.length,
         searchesUsed: maxSearchesToday,
         remainingSearches: remainingSearches - maxSearchesToday,
-        coverage: 'AI-powered market events'
+        coverage: 'Optimized AI-powered market events (free tier)',
+        optimization: 'Conservative API usage for free tier'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (error) {
-    console.error('Error in fetch-news function:', error)
+    console.error('Error in optimized fetch-news function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
