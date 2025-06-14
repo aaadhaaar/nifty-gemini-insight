@@ -11,33 +11,29 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create the widget container div
-    const widgetDiv = document.createElement('div');
-    widgetDiv.id = 'darqube-widget-container';
-    widgetDiv.style.width = '100%';
-    widgetDiv.style.height = '100%';
-
-    // Load Darqube widget script
+    // Create the widget script for Stock Target Advisor
     const script = document.createElement('script');
-    script.src = 'https://widget.darqube.com/js/widget.js';
+    script.type = 'text/javascript';
+    script.src = 'https://www.stocktargetadvisor.com/widgets/js/widget.js';
     script.async = true;
+    
     script.onload = () => {
       // Initialize the widget once script is loaded
-      if (window.DarqubeWidget) {
-        window.DarqubeWidget.init({
-          container: 'darqube-widget-container',
-          token: '684dbc1284490f9273764e0d',
+      if (window.STAWidget) {
+        window.STAWidget.init({
+          container: containerRef.current,
+          symbol: 'NIFTY',
+          market: 'NSE',
           width: '100%',
           height: '100%',
-          theme: 'dark'
+          theme: 'dark',
+          type: 'chart'
         });
       }
     };
 
-    if (containerRef.current) {
-      containerRef.current.appendChild(widgetDiv);
-      document.head.appendChild(script);
-    }
+    // Append script to head
+    document.head.appendChild(script);
 
     return () => {
       // Cleanup when component unmounts
@@ -45,7 +41,7 @@ const NiftyChart = () => {
         containerRef.current.innerHTML = '';
       }
       // Remove script from head
-      const existingScript = document.querySelector('script[src="https://widget.darqube.com/js/widget.js"]');
+      const existingScript = document.querySelector('script[src="https://www.stocktargetadvisor.com/widgets/js/widget.js"]');
       if (existingScript) {
         existingScript.remove();
       }
@@ -69,7 +65,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="darqube-chart-widget h-full"
+          className="sta-chart-widget h-full w-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
@@ -93,16 +89,18 @@ const NiftyChart = () => {
   );
 };
 
-// Extend window object to include DarqubeWidget
+// Extend window object to include STAWidget
 declare global {
   interface Window {
-    DarqubeWidget: {
+    STAWidget: {
       init: (config: {
-        container: string;
-        token: string;
+        container: HTMLElement | null;
+        symbol: string;
+        market: string;
         width: string;
         height: string;
         theme: string;
+        type: string;
       }) => void;
     };
   }
