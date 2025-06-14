@@ -107,9 +107,6 @@ const ProfitWidget = () => {
       <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 md:p-6">
         <div className="mb-4">
           <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Market Chart</h2>
-          <div className="text-slate-400 text-sm">
-            Live market data from Profit.com
-          </div>
         </div>
         
         <div className="flex flex-col items-center justify-center py-8 space-y-4">
@@ -142,9 +139,6 @@ const ProfitWidget = () => {
     <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 md:p-6">
       <div className="mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Market Chart</h2>
-        <div className="text-slate-400 text-sm">
-          Live market data from Profit.com
-        </div>
       </div>
       
       <div className="relative flex justify-center">
