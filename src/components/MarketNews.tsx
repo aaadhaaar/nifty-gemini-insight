@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Clock, TrendingUp, TrendingDown, AlertCircle, Building2, Zap } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, AlertCircle, Zap } from 'lucide-react';
 import { useNewsData } from '@/hooks/useNewsData';
 import LoadingSpinner from './LoadingSpinner';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,7 @@ const MarketNews = () => {
   };
 
   const formatTimeAgo = (dateString: string | null) => {
-    if (!dateString) return 'Unknown time';
+    if (!dateString) return 'Recent';
     
     const date = new Date(dateString);
     const now = new Date();
@@ -77,11 +78,11 @@ const MarketNews = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-            <Building2 className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            <Zap className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg md:text-xl font-bold text-white">Market News</h2>
-            <p className="text-sm text-slate-400">Auto-updated every 2 hours</p>
+            <h2 className="text-lg md:text-xl font-bold text-white">Market Analysis</h2>
+            <p className="text-sm text-slate-400">AI-powered insights</p>
           </div>
         </div>
         
@@ -93,8 +94,8 @@ const MarketNews = () => {
 
       {!newsArticles || newsArticles.length === 0 ? (
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 text-center">
-          <p className="text-slate-400 mb-2">No news articles available</p>
-          <p className="text-xs text-slate-500">News will be automatically fetched every 2 hours</p>
+          <p className="text-slate-400 mb-2">No market analysis available</p>
+          <p className="text-xs text-slate-500">Analysis will be automatically generated</p>
         </div>
       ) : (
         newsArticles.map((article) => (
@@ -102,10 +103,10 @@ const MarketNews = () => {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                  <Building2 className="w-5 h-5 text-white" />
+                  <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-white text-sm md:text-base">{article.source || 'News Source'}</h3>
+                  <h3 className="font-semibold text-white text-sm md:text-base">Market Analysis</h3>
                   <div className="flex items-center space-x-2 text-xs text-slate-400">
                     <Clock className="w-3 h-3" />
                     <span>{formatTimeAgo(article.published_at)}</span>
@@ -130,7 +131,7 @@ const MarketNews = () => {
                 <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                    <span className="text-xs font-medium text-blue-300">Summary</span>
+                    <span className="text-xs font-medium text-blue-300">Market Update</span>
                   </div>
                   <p className="text-sm text-slate-300 leading-relaxed">{article.content}</p>
                 </div>
@@ -139,7 +140,7 @@ const MarketNews = () => {
                   <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-purple-400"></div>
-                      <span className="text-xs font-medium text-purple-300">Companies Mentioned</span>
+                      <span className="text-xs font-medium text-purple-300">Key Companies</span>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {article.companies.map((company, index) => (
@@ -153,21 +154,10 @@ const MarketNews = () => {
               </div>
             )}
 
-            <div className="mt-4 pt-3 border-t border-slate-700/50 flex justify-between items-center">
+            <div className="mt-4 pt-3 border-t border-slate-700/50">
               <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-700/50 text-slate-300">
-                {article.category || 'Market News'}
+                {article.category || 'Market Intelligence'}
               </span>
-              
-              {article.url && (
-                <a 
-                  href={article.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-400 hover:text-blue-300 underline"
-                >
-                  Read Full Article
-                </a>
-              )}
             </div>
           </div>
         ))
