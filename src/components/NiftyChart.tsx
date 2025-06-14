@@ -11,63 +11,41 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create Investing.com widget
+    // Create DarQube widget
     const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'investing-widget-container';
+    widgetContainer.className = 'darqube-widget-container';
     
     // Create the widget HTML
     widgetContainer.innerHTML = `
-      <div class="tradingview-widget-container" style="height:100%;width:100%">
-        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-        {
-          "symbol": "BSE:SENSEX",
-          "width": "100%",
-          "height": "100%",
-          "locale": "en",
-          "dateRange": "12M",
-          "colorTheme": "dark",
-          "trendLineColor": "rgba(41, 98, 255, 1)",
-          "underLineColor": "rgba(41, 98, 255, 0.3)",
-          "underLineBottomColor": "rgba(41, 98, 255, 0)",
-          "isTransparent": true,
-          "autosize": true,
-          "largeChartUrl": ""
-        }
-        </script>
-      </div>
+      <iframe 
+        style="border: none; width: 100%; height: 100%;" 
+        data-widget-name="AdvancedChartWidget" 
+        src="https://widget.darqube.com/advanced-chart-widget?token=684dbc1284490f9273764e0d" 
+        id="AdvancedChartWidget-bvs4qly"
+      ></iframe>
     `;
 
     if (containerRef.current) {
       containerRef.current.appendChild(widgetContainer);
       
-      // Execute the script manually
-      const script = widgetContainer.querySelector('script');
-      if (script) {
-        const newScript = document.createElement('script');
-        newScript.type = 'text/javascript';
-        newScript.src = 'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
-        newScript.async = true;
-        newScript.innerHTML = `{
-          "symbol": "BSE:SENSEX",
-          "width": "100%",
-          "height": "100%",
-          "locale": "en",
-          "dateRange": "12M",
-          "colorTheme": "dark",
-          "trendLineColor": "rgba(41, 98, 255, 1)",
-          "underLineColor": "rgba(41, 98, 255, 0.3)",
-          "underLineBottomColor": "rgba(41, 98, 255, 0)",
-          "isTransparent": true,
-          "autosize": true,
-          "largeChartUrl": ""
-        }`;
-        
-        const widgetDiv = widgetContainer.querySelector('.tradingview-widget-container__widget');
-        if (widgetDiv) {
-          widgetDiv.appendChild(newScript);
-        }
-      }
+      // Add the message listener script
+      const script = document.createElement('script');
+      script.innerHTML = `
+        window.top.addEventListener("message", function(msg) {
+          const widget = document.getElementById('AdvancedChartWidget-bvs4qly');
+          
+          if (!widget) return;
+          
+          const styles = msg.data?.styles;
+          const token = msg.data?.token;
+          const urlToken = new URL(widget.src)?.searchParams?.get?.('token');
+          if (styles && token === urlToken) {
+            Object.keys(styles).forEach(key => widget.style.setProperty(key, styles[key]))
+          }
+        });
+      `;
+      
+      document.head.appendChild(script);
     }
 
     return () => {
@@ -95,7 +73,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="chart-widget-container h-full"
+          className="darqube-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>

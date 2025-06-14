@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, Mail, Lock, User, Chrome } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -17,6 +18,8 @@ const Auth = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('signin');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   
   const { signIn, signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
@@ -69,6 +72,33 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address first');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setResetEmailSent(true);
+        setShowForgotPassword(false);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
@@ -79,6 +109,63 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="bg-slate-800/50 backdrop-blur-xl border-slate-700/50">
+            <CardHeader className="text-center">
+              <CardTitle className="text-white">Reset Password</CardTitle>
+              <CardDescription className="text-slate-400">
+                Enter your email to receive a password reset link
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email" className="text-slate-300">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <Alert className="bg-red-500/10 border-red-500/20">
+                  <AlertDescription className="text-red-400">{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-3">
+                <Button
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                >
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+
+                <Button
+                  onClick={() => setShowForgotPassword(false)}
+                  variant="ghost"
+                  className="w-full text-slate-300 hover:text-white hover:bg-slate-700/50"
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
@@ -104,6 +191,14 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {resetEmailSent && (
+              <Alert className="mb-4 bg-green-500/10 border-green-500/20">
+                <AlertDescription className="text-green-400">
+                  Password reset email sent! Check your inbox for instructions.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-slate-700/50">
                 <TabsTrigger value="signin" className="text-slate-300 data-[state=active]:text-white">
@@ -146,6 +241,16 @@ const Auth = () => {
                     </div>
                   </div>
 
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+
                   {error && (
                     <Alert className="bg-red-500/10 border-red-500/20">
                       <AlertDescription className="text-red-400">{error}</AlertDescription>
@@ -155,7 +260,7 @@ const Auth = () => {
                   <Button
                     onClick={() => handleSubmit('signin')}
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
                   >
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
