@@ -8,7 +8,7 @@ const ProfitWidget = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    // Add the message listener for the widget
+    // Add the message listener for the widget - exactly like your working code
     const handleMessage = (msg: MessageEvent) => {
       const widget = document.getElementById('MiniChartWidget-u3t49oz');
       
@@ -24,31 +24,25 @@ const ProfitWidget = () => {
       }
     };
 
-    window.addEventListener("message", handleMessage);
+    // Use window.top like in your working code
+    window.top?.addEventListener("message", handleMessage);
 
-    // Check for widget errors after a timeout
+    // Much more lenient error detection - only trigger if widget completely fails to load
     const errorTimeout = setTimeout(() => {
       const widget = document.getElementById('MiniChartWidget-u3t49oz') as HTMLIFrameElement;
       if (widget) {
-        try {
-          // If the widget fails to load properly, show error state
-          widget.onload = () => {
-            // Widget loaded successfully
-            setWidgetError(false);
-          };
-          
-          widget.onerror = () => {
-            setWidgetError(true);
-          };
-        } catch (error) {
-          console.log('Widget error detection:', error);
+        // Only set error if the iframe src is empty or widget is completely broken
+        widget.onerror = () => {
+          console.log('Widget failed to load');
           setWidgetError(true);
-        }
+        };
       }
-    }, 5000); // Check after 5 seconds
+    }, 10000); // Wait 10 seconds before even checking
 
     return () => {
-      window.removeEventListener("message", handleMessage);
+      if (window.top) {
+        window.top.removeEventListener("message", handleMessage);
+      }
       clearTimeout(errorTimeout);
     };
   }, []);
