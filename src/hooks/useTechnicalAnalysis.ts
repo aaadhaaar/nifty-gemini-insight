@@ -38,31 +38,8 @@ export const useTechnicalAnalysis = () => {
       setError(null);
       setLoading(true);
 
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (!forceRefresh) {
-        // Check for cached data first
-        const { data: cachedData } = await supabase
-          .from('technical_analysis')
-          .select('*')
-          .eq('analysis_date', today)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (cachedData && cachedData.length > 0) {
-          const analysis = cachedData[0];
-          setData({
-            market_overview: analysis.market_overview,
-            technical_indicators: analysis.technical_indicators,
-            key_levels: analysis.key_levels,
-            chart_patterns: analysis.chart_patterns,
-          });
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fetch fresh data
+      // Fetch fresh data from the edge function
+      console.log('Fetching technical analysis from edge function...');
       const { data: functionData, error: functionError } = await supabase.functions.invoke('technical-analysis');
 
       if (functionError) {

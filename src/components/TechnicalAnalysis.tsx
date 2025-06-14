@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,31 +49,7 @@ const TechnicalAnalysis = () => {
         setLoading(true);
       }
 
-      // First check if we have recent data in the database
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existingData } = await supabase
-        .from('technical_analysis')
-        .select('*')
-        .eq('analysis_date', today)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      // If we have data from today and not forcing refresh, use it
-      if (existingData && existingData.length > 0 && !forceRefresh) {
-        const analysis = existingData[0];
-        setTechnicalData({
-          market_overview: analysis.market_overview,
-          technical_indicators: analysis.technical_indicators,
-          key_levels: analysis.key_levels,
-          chart_patterns: analysis.chart_patterns,
-        });
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-
-      // Otherwise, fetch fresh data from the API
-      console.log('Fetching fresh technical analysis...');
+      console.log('Fetching technical analysis from edge function...');
       const { data, error: functionError } = await supabase.functions.invoke('technical-analysis');
 
       if (functionError) {
