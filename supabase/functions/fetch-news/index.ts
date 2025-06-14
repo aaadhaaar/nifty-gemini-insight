@@ -22,7 +22,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Starting comprehensive market news fetch process...')
+    console.log('Starting AI-powered market events fetch...')
     
     // Initialize API usage manager
     const apiManager = new ApiUsageManager(supabaseClient)
@@ -36,44 +36,61 @@ serve(async (req) => {
       )
     }
 
-    // Clean up old articles
+    // Clean up old articles first
     await cleanupOldArticles(supabaseClient)
 
-    // Initialize news searcher
+    // Initialize news searcher for market events
     const newsSearcher = new NewsSearcher(Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '')
-    const searchQueries = newsSearcher.getSearchQueries()
+    const searchQueries = newsSearcher.getMarketEventQueries()
     
-    const maxSearchesToday = Math.min(8, remainingSearches)
-    const allMarketNews = []
+    const maxSearchesToday = Math.min(6, remainingSearches) // Reduced since we're getting more focused results
+    const allMarketEvents = []
 
-    // Search for news articles
+    // Search for market events with AI analysis
     for (let i = 0; i < maxSearchesToday; i++) {
       const query = searchQueries[i]
-      const newsResults = await newsSearcher.searchNews(query)
-      allMarketNews.push(...newsResults)
+      const marketEvents = await newsSearcher.searchMarketEvents(query)
+      allMarketEvents.push(...marketEvents)
 
       // Update API usage count
       await apiManager.updateUsageCount(currentSearches, i + 1)
     }
 
-    // Sort by freshness score and relevance
-    allMarketNews.sort((a, b) => b.freshness_score - a.freshness_score)
-    const topMarketNews = allMarketNews.slice(0, 12)
+    // Sort by confidence and freshness
+    allMarketEvents.sort((a, b) => (b.confidence * b.freshness_score) - (a.confidence * a.freshness_score))
+    const topMarketEvents = allMarketEvents.slice(0, 15)
 
-    console.log(`Collected ${topMarketNews.length} relevant market news articles`)
+    console.log(`Collected ${topMarketEvents.length} AI-analyzed market events`)
 
-    // Generate market impact analysis for collected news
-    if (topMarketNews.length > 0) {
-      await generateMarketAnalysis(supabaseClient, topMarketNews)
+    // Store market events as structured news articles
+    for (const event of topMarketEvents) {
+      await supabaseClient
+        .from('news_articles')
+        .insert({
+          title: event.title,
+          content: event.ai_summary,
+          summary: event.market_implications,
+          sentiment: this.determineSentiment(event.market_implications),
+          market_impact: this.determineImpact(event.confidence),
+          category: event.event_type,
+          source: event.source,
+          url: null, // No specific URL for AI-generated insights
+          companies: this.extractCompanies(event.description),
+        })
+    }
+
+    // Generate enhanced market analysis from events
+    if (topMarketEvents.length > 0) {
+      await generateMarketAnalysis(supabaseClient, topMarketEvents)
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        articlesProcessed: topMarketNews.length,
+        eventsProcessed: topMarketEvents.length,
         searchesUsed: maxSearchesToday,
         remainingSearches: remainingSearches - maxSearchesToday,
-        coverage: 'comprehensive'
+        coverage: 'AI-powered market events'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
@@ -85,3 +102,36 @@ serve(async (req) => {
     )
   }
 })
+
+function determineSentiment(implications: string): string {
+  const positive = ['positive', 'boost', 'growth', 'opportunity', 'strong', 'beat']
+  const negative = ['headwind', 'decline', 'risk', 'concern', 'weak', 'challenge']
+  
+  const lowerImplications = implications.toLowerCase()
+  const positiveCount = positive.filter(word => lowerImplications.includes(word)).length
+  const negativeCount = negative.filter(word => lowerImplications.includes(word)).length
+  
+  if (positiveCount > negativeCount) return 'positive'
+  if (negativeCount > positiveCount) return 'negative'
+  return 'neutral'
+}
+
+function determineImpact(confidence: number): string {
+  if (confidence >= 80) return 'high'
+  if (confidence >= 60) return 'medium'
+  return 'low'
+}
+
+function extractCompanies(description: string): string[] {
+  // Simple company extraction - can be enhanced
+  const companies = []
+  const commonCompanies = ['TCS', 'Infosys', 'Reliance', 'HDFC', 'ICICI', 'SBI', 'Wipro', 'Bharti Airtel', 'ITC', 'HUL']
+  
+  for (const company of commonCompanies) {
+    if (description.toUpperCase().includes(company.toUpperCase())) {
+      companies.push(company)
+    }
+  }
+  
+  return companies
+}
