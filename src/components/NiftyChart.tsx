@@ -11,53 +11,23 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create TradingView widget script
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      "autosize": true,
-      "symbol": "NSE:NIFTY",
-      "interval": "D",
-      "timezone": "Asia/Kolkata",
-      "theme": "dark",
-      "style": "1",
-      "locale": "en",
-      "enable_publishing": false,
-      "backgroundColor": "rgba(15, 23, 42, 1)",
-      "gridColor": "rgba(71, 85, 105, 0.3)",
-      "hide_top_toolbar": false,
-      "hide_legend": false,
-      "save_image": false,
-      "calendar": false,
-      "hide_volume": false,
-      "support_host": "https://www.tradingview.com"
-    });
-
-    // Create the widget container
-    const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'tradingview-widget-container';
-    widgetContainer.style.height = '100%';
-    widgetContainer.style.width = '100%';
-    
-    const widgetContent = document.createElement('div');
-    widgetContent.className = 'tradingview-widget-container__widget';
-    widgetContent.style.height = 'calc(100% - 32px)';
-    widgetContent.style.width = '100%';
-    
-    widgetContainer.appendChild(widgetContent);
-    widgetContainer.appendChild(script);
+    // Create Yahoo Finance widget iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = 'https://finance.yahoo.com/chart/%5ENSEI';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '8px';
+    iframe.allow = 'fullscreen';
 
     if (containerRef.current) {
-      containerRef.current.appendChild(widgetContainer);
+      containerRef.current.appendChild(iframe);
     }
 
     return () => {
-      // Cleanup: remove scripts when component unmounts
-      const existingScript = document.querySelector('script[src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"]');
-      if (existingScript) {
-        existingScript.remove();
+      // Cleanup when component unmounts
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
       }
     };
   }, []);
@@ -75,11 +45,11 @@ const NiftyChart = () => {
         </div>
       </div>
 
-      {/* TradingView Chart Container */}
+      {/* Yahoo Finance Chart Container */}
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="tradingview-widget-container h-full"
+          className="yahoo-finance-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
