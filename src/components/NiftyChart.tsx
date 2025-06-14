@@ -11,22 +11,32 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create Profit.com widget
-    const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'profit-widget-container';
-    
-    // Create the widget HTML
-    widgetContainer.innerHTML = `
-      <iframe 
-        style="border: none; width: 100%; height: 100%;" 
-        src="https://www.profit.com/widget/chart?symbol=NIFTY&interval=1D&theme=dark" 
-        id="profit-chart-widget"
-        allowfullscreen
-      ></iframe>
-    `;
+    // Create TradingView widget
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.type = 'text/javascript';
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      "autosize": true,
+      "symbol": "NSE:NIFTY",
+      "interval": "D",
+      "timezone": "Asia/Kolkata",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "enable_publishing": false,
+      "backgroundColor": "rgba(15, 23, 42, 0.8)",
+      "gridColor": "rgba(71, 85, 105, 0.3)",
+      "hide_top_toolbar": false,
+      "hide_legend": false,
+      "save_image": false,
+      "calendar": false,
+      "hide_volume": false,
+      "support_host": "https://www.tradingview.com"
+    });
 
     if (containerRef.current) {
-      containerRef.current.appendChild(widgetContainer);
+      containerRef.current.appendChild(script);
     }
 
     return () => {
@@ -54,7 +64,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="profit-widget-container h-full"
+          className="tradingview-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
