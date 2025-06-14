@@ -1,6 +1,9 @@
 
-import React, { useMemo } from 'react';
-import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, BarChart3, Target } from 'lucide-react';
+import React from 'react';
+import { TrendingUp, TrendingDown, AlertTriangle, Target, Brain, Activity } from 'lucide-react';
+import { useImpactAnalysis } from '@/hooks/useImpactAnalysis';
+import LoadingSpinner from './LoadingSpinner';
+import ImpactChart from './ImpactChart';
 
 interface Stock {
   symbol: string;
@@ -13,69 +16,58 @@ interface ImpactAnalysisProps {
 }
 
 const ImpactAnalysis: React.FC<ImpactAnalysisProps> = ({ selectedStock }) => {
-  // Memoize the generated data to prevent it from changing on re-renders
-  const analysisData = useMemo(() => {
-    const generateMockData = (stock?: Stock) => {
-      if (!stock) {
-        return {
-          overallSentiment: 'neutral',
-          sentimentScore: 0,
-          priceTarget: 0,
-          keyFactors: [],
-          riskFactors: [],
-          opportunities: []
-        };
-      }
+  const { data: analysisData, isLoading, error } = useImpactAnalysis();
 
-      // Mock data generation based on stock characteristics
-      const sectorMultipliers = {
-        'Banking': { sentiment: 0.1, volatility: 0.8 },
-        'IT Services': { sentiment: 0.3, volatility: 0.6 },
-        'FMCG': { sentiment: 0.2, volatility: 0.4 },
-        'Oil & Gas': { sentiment: -0.1, volatility: 1.2 },
-        'Pharmaceuticals': { sentiment: 0.15, volatility: 0.7 },
-        'Automobiles': { sentiment: 0.05, volatility: 0.9 }
-      };
+  if (isLoading) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6">
+        <div className="flex items-center justify-center py-8">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
 
-      const multiplier = sectorMultipliers[stock.sector as keyof typeof sectorMultipliers] || { sentiment: 0, volatility: 0.8 };
-      
-      // Use stock symbol as seed for consistent random values
-      const seed = stock.symbol.charCodeAt(0) + stock.symbol.charCodeAt(1) + stock.symbol.length;
-      const seededRandom = (seed: number) => {
-        const x = Math.sin(seed) * 10000;
-        return x - Math.floor(x);
-      };
-      
-      const baseScore = seededRandom(seed) * 40 - 20; // -20 to +20
-      const sentimentScore = Math.round(baseScore + multiplier.sentiment * 100);
-      
-      return {
-        overallSentiment: sentimentScore > 5 ? 'bullish' : sentimentScore < -5 ? 'bearish' : 'neutral',
-        sentimentScore,
-        priceTarget: Math.round(seededRandom(seed + 1) * 20 + 10), // 10-30% target
-        keyFactors: [
-          `Strong ${stock.sector.toLowerCase()} sector fundamentals`,
-          `Positive quarterly earnings outlook for ${stock.symbol}`,
-          `Institutional investor confidence in ${stock.name}`,
-          `Technical indicators showing bullish momentum`
-        ],
-        riskFactors: [
-          `Market volatility affecting ${stock.sector} sector`,
-          `Regulatory changes impacting ${stock.symbol}`,
-          `Global economic headwinds`,
-          `Competition in ${stock.sector.toLowerCase()} space`
-        ],
-        opportunities: [
-          `${stock.sector} sector growth potential`,
-          `Digital transformation initiatives at ${stock.symbol}`,
-          `Expansion into new markets`,
-          `Strategic partnerships and acquisitions`
-        ]
-      };
-    };
+  if (error || !analysisData || analysisData.length === 0) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center">
+            <Target className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Market Impact Analysis</h2>
+            <p className="text-sm text-slate-400">Real-time AI-powered market analysis</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-slate-400 mb-2">No market analysis available</p>
+          <p className="text-xs text-slate-500">Market analysis data is being generated</p>
+        </div>
+      </div>
+    );
+  }
 
-    return generateMockData(selectedStock);
-  }, [selectedStock]);
+  // Filter analysis for selected stock if available
+  const relevantAnalysis = selectedStock 
+    ? analysisData.filter(item => 
+        item.what_happened.toLowerCase().includes(selectedStock.symbol.toLowerCase()) ||
+        item.what_happened.toLowerCase().includes(selectedStock.name.toLowerCase()) ||
+        item.what_happened.toLowerCase().includes(selectedStock.sector.toLowerCase())
+      )
+    : analysisData;
+
+  const displayAnalysis = relevantAnalysis.length > 0 ? relevantAnalysis : analysisData.slice(0, 6);
+
+  // Calculate overall sentiment from analysis data
+  const overallImpact = displayAnalysis.reduce((sum, item) => sum + item.expected_points_impact, 0) / displayAnalysis.length;
+  const averageConfidence = displayAnalysis.reduce((sum, item) => sum + item.confidence_score, 0) / displayAnalysis.length;
+
+  const getSentimentFromImpact = (impact: number) => {
+    if (impact > 0.3) return 'bullish';
+    if (impact < -0.3) return 'bearish';
+    return 'neutral';
+  };
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
@@ -93,116 +85,148 @@ const ImpactAnalysis: React.FC<ImpactAnalysisProps> = ({ selectedStock }) => {
     }
   };
 
+  const getImpactStrength = (impact: number) => {
+    const abs = Math.abs(impact);
+    if (abs >= 1.5) return 'Very Strong';
+    if (abs >= 1.0) return 'Strong';
+    if (abs >= 0.5) return 'Moderate';
+    return 'Weak';
+  };
+
+  // Prepare chart data
+  const chartData = displayAnalysis.slice(-10).map((item, index) => ({
+    time: new Date(item.created_at).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }),
+    cumulativeImpact: displayAnalysis.slice(0, index + 1).reduce((sum, d) => sum + d.expected_points_impact, 0) / (index + 1),
+    articleCount: index + 1
+  }));
+
+  const overallSentiment = getSentimentFromImpact(overallImpact);
+
   return (
-    <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 md:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center">
-            <Target className="w-4 h-4 md:w-5 md:h-5 text-white" />
+    <div className="space-y-6">
+      <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center">
+              <Brain className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg md:text-xl font-bold text-white">
+                {selectedStock ? `${selectedStock.symbol} Market Analysis` : 'Live Market Analysis'}
+              </h2>
+              <p className="text-sm text-slate-400">
+                {selectedStock 
+                  ? `Real-time analysis for ${selectedStock.name}`
+                  : 'AI-powered market event analysis'
+                }
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-white">
-              {selectedStock ? `${selectedStock.symbol} Impact Analysis` : 'Market Impact Analysis'}
-            </h2>
-            <p className="text-sm text-slate-400">
-              {selectedStock 
-                ? `AI-powered analysis for ${selectedStock.name}`
-                : 'AI-powered market sentiment analysis'
-              }
+        </div>
+
+        {/* Overall Impact Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-slate-700/30 rounded-xl p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className={getSentimentColor(overallSentiment)}>
+                {getSentimentIcon(overallSentiment)}
+              </div>
+              <h3 className="font-semibold text-white">Market Sentiment</h3>
+            </div>
+            <p className={`text-lg font-bold capitalize ${getSentimentColor(overallSentiment)}`}>
+              {overallSentiment}
             </p>
+            <p className="text-sm text-slate-400">
+              Impact: {overallImpact > 0 ? '+' : ''}{overallImpact.toFixed(2)} points
+            </p>
+          </div>
+
+          <div className="bg-slate-700/30 rounded-xl p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Activity className="w-5 h-5 text-blue-400" />
+              <h3 className="font-semibold text-white">Analysis Strength</h3>
+            </div>
+            <p className="text-lg font-bold text-blue-400">
+              {getImpactStrength(overallImpact)}
+            </p>
+            <p className="text-sm text-slate-400">
+              Confidence: {averageConfidence.toFixed(0)}%
+            </p>
+          </div>
+
+          <div className="bg-slate-700/30 rounded-xl p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Target className="w-5 h-5 text-purple-400" />
+              <h3 className="font-semibold text-white">Events Analyzed</h3>
+            </div>
+            <p className="text-lg font-bold text-purple-400">{displayAnalysis.length}</p>
+            <p className="text-sm text-slate-400">
+              {selectedStock ? 'Stock-specific' : 'Market-wide'}
+            </p>
+          </div>
+        </div>
+
+        {/* Market Analysis Insights */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
+            <Brain className="w-5 h-5 text-orange-400" />
+            <span>Live Market Insights</span>
+          </h3>
+          
+          <div className="grid gap-4">
+            {displayAnalysis.slice(0, 4).map((analysis, index) => (
+              <div key={analysis.id} className={`p-4 rounded-xl border ${
+                analysis.expected_points_impact > 0.5 
+                  ? 'bg-emerald-500/10 border-emerald-500/20' 
+                  : analysis.expected_points_impact < -0.5
+                  ? 'bg-red-500/10 border-red-500/20'
+                  : 'bg-blue-500/10 border-blue-500/20'
+              }`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      analysis.expected_points_impact > 0.5 ? 'bg-emerald-400' : 
+                      analysis.expected_points_impact < -0.5 ? 'bg-red-400' : 'bg-blue-400'
+                    }`}></div>
+                    <span className={`text-xs font-medium ${
+                      analysis.expected_points_impact > 0.5 ? 'text-emerald-300' : 
+                      analysis.expected_points_impact < -0.5 ? 'text-red-300' : 'text-blue-300'
+                    }`}>
+                      {analysis.expected_points_impact > 0 ? 'POSITIVE' : analysis.expected_points_impact < 0 ? 'NEGATIVE' : 'NEUTRAL'} IMPACT
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs text-slate-400">
+                    <span>{analysis.confidence_score}% confidence</span>
+                    <span>•</span>
+                    <span>{new Date(analysis.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                
+                <h4 className="font-semibold text-white mb-2 text-sm">
+                  {analysis.what_happened}
+                </h4>
+                
+                <p className="text-sm text-slate-300 mb-3">
+                  {analysis.why_matters}
+                </p>
+                
+                <div className="pt-2 border-t border-slate-600/30">
+                  <p className="text-xs text-slate-400">
+                    <span className="font-medium">Market Impact:</span> {analysis.market_impact_description}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {!selectedStock ? (
-        <div className="text-center py-8">
-          <p className="text-slate-400 mb-2">Select a stock to view detailed analysis</p>
-          <p className="text-xs text-slate-500">Use the search above to choose any Nifty 50 stock</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Overall Sentiment */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-700/30 rounded-xl p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className={getSentimentColor(analysisData.overallSentiment)}>
-                  {getSentimentIcon(analysisData.overallSentiment)}
-                </div>
-                <h3 className="font-semibold text-white">Overall Sentiment</h3>
-              </div>
-              <p className={`text-lg font-bold capitalize ${getSentimentColor(analysisData.overallSentiment)}`}>
-                {analysisData.overallSentiment}
-              </p>
-              <p className="text-sm text-slate-400">Score: {analysisData.sentimentScore}</p>
-            </div>
-
-            <div className="bg-slate-700/30 rounded-xl p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <DollarSign className="w-5 h-5 text-green-400" />
-                <h3 className="font-semibold text-white">Price Target</h3>
-              </div>
-              <p className="text-lg font-bold text-green-400">+{analysisData.priceTarget}%</p>
-              <p className="text-sm text-slate-400">12-month outlook</p>
-            </div>
-
-            <div className="bg-slate-700/30 rounded-xl p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <BarChart3 className="w-5 h-5 text-blue-400" />
-                <h3 className="font-semibold text-white">Sector</h3>
-              </div>
-              <p className="text-lg font-bold text-blue-400">{selectedStock.sector}</p>
-              <p className="text-sm text-slate-400">Industry classification</p>
-            </div>
-          </div>
-
-          {/* Key Factors */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-              <h3 className="font-semibold text-emerald-300 mb-3 flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4" />
-                <span>Growth Drivers</span>
-              </h3>
-              <ul className="space-y-2">
-                {analysisData.keyFactors.slice(0, 4).map((factor, index) => (
-                  <li key={index} className="text-sm text-slate-300 flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2 flex-shrink-0"></div>
-                    <span>{factor}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-              <h3 className="font-semibold text-red-300 mb-3 flex items-center space-x-2">
-                <AlertTriangle className="w-4 h-4" />
-                <span>Risk Factors</span>
-              </h3>
-              <ul className="space-y-2">
-                {analysisData.riskFactors.slice(0, 4).map((risk, index) => (
-                  <li key={index} className="text-sm text-slate-300 flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0"></div>
-                    <span>{risk}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-              <h3 className="font-semibold text-blue-300 mb-3 flex items-center space-x-2">
-                <Target className="w-4 h-4" />
-                <span>Opportunities</span>
-              </h3>
-              <ul className="space-y-2">
-                {analysisData.opportunities.slice(0, 4).map((opportunity, index) => (
-                  <li key={index} className="text-sm text-slate-300 flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0"></div>
-                    <span>{opportunity}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
+      {/* Impact Trend Chart */}
+      {chartData.length > 0 && (
+        <ImpactChart data={chartData} />
       )}
     </div>
   );
