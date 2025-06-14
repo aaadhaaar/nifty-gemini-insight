@@ -11,41 +11,43 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create the iframe element
-    const iframe = document.createElement('iframe');
-    iframe.style.border = 'none';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.setAttribute('data-widget-name', 'AdvancedChartWidget');
-    iframe.src = 'https://widget.darqube.com/advanced-chart-widget?token=684dbc1284490f9273764e0d';
-    iframe.id = 'AdvancedChartWidget-qjhwij1';
+    // Create the widget container div
+    const widgetDiv = document.createElement('div');
+    widgetDiv.id = 'darqube-widget-container';
+    widgetDiv.style.width = '100%';
+    widgetDiv.style.height = '100%';
 
-    // Create the script for message handling
+    // Load Darqube widget script
     const script = document.createElement('script');
-    script.innerHTML = `
-      window.top.addEventListener("message", function(msg) {
-        const widget = document.getElementById('AdvancedChartWidget-qjhwij1');
-        
-        if (!widget) return;
-        
-        const styles = msg.data?.styles;
-        const token = msg.data?.token;
-        const urlToken = new URL(widget.src)?.searchParams?.get?.('token');
-        if (styles && token === urlToken) {
-          Object.keys(styles).forEach(key => widget.style.setProperty(key, styles[key]))
-        }
-      });
-    `;
+    script.src = 'https://widget.darqube.com/js/widget.js';
+    script.async = true;
+    script.onload = () => {
+      // Initialize the widget once script is loaded
+      if (window.DarqubeWidget) {
+        window.DarqubeWidget.init({
+          container: 'darqube-widget-container',
+          token: '684dbc1284490f9273764e0d',
+          width: '100%',
+          height: '100%',
+          theme: 'dark'
+        });
+      }
+    };
 
     if (containerRef.current) {
-      containerRef.current.appendChild(iframe);
-      containerRef.current.appendChild(script);
+      containerRef.current.appendChild(widgetDiv);
+      document.head.appendChild(script);
     }
 
     return () => {
       // Cleanup when component unmounts
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
+      }
+      // Remove script from head
+      const existingScript = document.querySelector('script[src="https://widget.darqube.com/js/widget.js"]');
+      if (existingScript) {
+        existingScript.remove();
       }
     };
   }, []);
@@ -90,5 +92,20 @@ const NiftyChart = () => {
     </div>
   );
 };
+
+// Extend window object to include DarqubeWidget
+declare global {
+  interface Window {
+    DarqubeWidget: {
+      init: (config: {
+        container: string;
+        token: string;
+        width: string;
+        height: string;
+        theme: string;
+      }) => void;
+    };
+  }
+}
 
 export default NiftyChart;
