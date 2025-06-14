@@ -11,31 +11,36 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create TradingView widget
+    // Create Profit.com widget script
     const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type = 'text/javascript';
     script.async = true;
-    script.innerHTML = JSON.stringify({
-      "autosize": true,
-      "symbol": "NSE:NIFTY",
-      "interval": "D",
-      "timezone": "Asia/Kolkata",
-      "theme": "dark",
-      "style": "1",
-      "locale": "en",
-      "enable_publishing": false,
-      "backgroundColor": "rgba(15, 23, 42, 0.8)",
-      "gridColor": "rgba(71, 85, 105, 0.3)",
-      "hide_top_toolbar": false,
-      "hide_legend": false,
-      "save_image": false,
-      "calendar": false,
-      "hide_volume": false,
-      "support_host": "https://www.tradingview.com"
-    });
+    script.src = 'https://www.profit.com/widget/widget.js';
+    
+    // Create widget configuration
+    const widgetConfig = document.createElement('script');
+    widgetConfig.type = 'text/javascript';
+    widgetConfig.innerHTML = `
+      window.ProfitWidget = {
+        symbol: 'NIFTY',
+        width: '100%',
+        height: '100%',
+        theme: 'dark',
+        interval: '1D',
+        toolbar: true,
+        container: 'profit-chart-container'
+      };
+    `;
+
+    // Create the container div for the widget
+    const widgetDiv = document.createElement('div');
+    widgetDiv.id = 'profit-chart-container';
+    widgetDiv.style.width = '100%';
+    widgetDiv.style.height = '100%';
 
     if (containerRef.current) {
+      containerRef.current.appendChild(widgetConfig);
+      containerRef.current.appendChild(widgetDiv);
       containerRef.current.appendChild(script);
     }
 
@@ -64,7 +69,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="tradingview-widget-container h-full"
+          className="profit-chart-widget h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
