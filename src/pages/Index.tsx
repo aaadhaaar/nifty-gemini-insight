@@ -4,9 +4,10 @@ import Header from '@/components/Header';
 import NiftyChart from '@/components/NiftyChart';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
+import TechnicalAnalysis from '@/components/TechnicalAnalysis';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import UserProfile from '@/components/UserProfile';
-import { BarChart3, Newspaper, Target, Menu, X, RefreshCw } from 'lucide-react';
+import { BarChart3, Newspaper, Target, Menu, X, RefreshCw, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -187,7 +188,8 @@ const Index = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'news', label: 'News', icon: Newspaper },
-    { id: 'impact', label: 'Analysis', icon: Target }
+    { id: 'impact', label: 'Analysis', icon: Target },
+    { id: 'technical', label: 'Technical', icon: TrendingUp }
   ];
 
   const getTimeSinceLastCall = () => {
@@ -257,7 +259,7 @@ const Index = () => {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="border-t border-slate-700/50 md:hidden">
-            <div className="grid grid-cols-3 gap-1 p-2">
+            <div className="grid grid-cols-4 gap-1 p-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -284,7 +286,7 @@ const Index = () => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:block border-t border-slate-700/50">
-          <div className="flex space-x-1 p-2 max-w-md mx-auto">
+          <div className="flex space-x-1 p-2 max-w-lg mx-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -331,6 +333,8 @@ const Index = () => {
             {activeTab === 'news' && <MarketNews />}
             
             {activeTab === 'impact' && <ImpactAnalysis />}
+            
+            {activeTab === 'technical' && <TechnicalAnalysis />}
           </div>
         )}
 
