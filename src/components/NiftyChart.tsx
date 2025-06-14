@@ -11,17 +11,63 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create Yahoo Finance widget iframe
-    const iframe = document.createElement('iframe');
-    iframe.src = 'https://finance.yahoo.com/chart/%5ENSEI';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    iframe.style.borderRadius = '8px';
-    iframe.allow = 'fullscreen';
+    // Create Investing.com widget
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'investing-widget-container';
+    
+    // Create the widget HTML
+    widgetContainer.innerHTML = `
+      <div class="tradingview-widget-container" style="height:100%;width:100%">
+        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {
+          "symbol": "BSE:SENSEX",
+          "width": "100%",
+          "height": "100%",
+          "locale": "en",
+          "dateRange": "12M",
+          "colorTheme": "dark",
+          "trendLineColor": "rgba(41, 98, 255, 1)",
+          "underLineColor": "rgba(41, 98, 255, 0.3)",
+          "underLineBottomColor": "rgba(41, 98, 255, 0)",
+          "isTransparent": true,
+          "autosize": true,
+          "largeChartUrl": ""
+        }
+        </script>
+      </div>
+    `;
 
     if (containerRef.current) {
-      containerRef.current.appendChild(iframe);
+      containerRef.current.appendChild(widgetContainer);
+      
+      // Execute the script manually
+      const script = widgetContainer.querySelector('script');
+      if (script) {
+        const newScript = document.createElement('script');
+        newScript.type = 'text/javascript';
+        newScript.src = 'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
+        newScript.async = true;
+        newScript.innerHTML = `{
+          "symbol": "BSE:SENSEX",
+          "width": "100%",
+          "height": "100%",
+          "locale": "en",
+          "dateRange": "12M",
+          "colorTheme": "dark",
+          "trendLineColor": "rgba(41, 98, 255, 1)",
+          "underLineColor": "rgba(41, 98, 255, 0.3)",
+          "underLineBottomColor": "rgba(41, 98, 255, 0)",
+          "isTransparent": true,
+          "autosize": true,
+          "largeChartUrl": ""
+        }`;
+        
+        const widgetDiv = widgetContainer.querySelector('.tradingview-widget-container__widget');
+        if (widgetDiv) {
+          widgetDiv.appendChild(newScript);
+        }
+      }
     }
 
     return () => {
@@ -45,11 +91,11 @@ const NiftyChart = () => {
         </div>
       </div>
 
-      {/* Yahoo Finance Chart Container */}
+      {/* Chart Container */}
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="yahoo-finance-widget-container h-full"
+          className="chart-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
