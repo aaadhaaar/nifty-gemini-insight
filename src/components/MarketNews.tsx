@@ -1,12 +1,37 @@
-
 import React from 'react';
 import { Clock, TrendingUp, TrendingDown, AlertCircle, Zap, Wifi, RefreshCw, Brain, Target } from 'lucide-react';
 import { useNewsData } from '@/hooks/useNewsData';
 import LoadingSpinner from './LoadingSpinner';
 import { Button } from '@/components/ui/button';
 
-const MarketNews = () => {
+interface Stock {
+  symbol: string;
+  name: string;
+  sector: string;
+}
+
+interface MarketNewsProps {
+  selectedStock?: Stock;
+}
+
+const MarketNews: React.FC<MarketNewsProps> = ({ selectedStock }) => {
   const { data: newsArticles, isLoading, error, refetch, isFetching } = useNewsData();
+
+  // Filter news articles relevant to the selected stock
+  const filteredArticles = React.useMemo(() => {
+    if (!newsArticles || !selectedStock) return newsArticles;
+    
+    return newsArticles.filter(article => {
+      // Check if the stock is mentioned in companies array
+      if (article.companies?.includes(selectedStock.symbol)) return true;
+      
+      // Check if stock symbol or name is mentioned in title or content
+      const searchTerms = [selectedStock.symbol, selectedStock.name.toLowerCase()];
+      const articleText = `${article.title} ${article.content || ''} ${article.summary || ''}`.toLowerCase();
+      
+      return searchTerms.some(term => articleText.includes(term.toLowerCase()));
+    });
+  }, [newsArticles, selectedStock]);
 
   const getSentimentIcon = (sentiment: string | null) => {
     switch (sentiment) {
@@ -108,8 +133,15 @@ const MarketNews = () => {
             <Brain className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg md:text-xl font-bold text-white">Market Events Intelligence</h2>
-            <p className="text-sm text-slate-400">AI-powered market events • Real-time analysis</p>
+            <h2 className="text-lg md:text-xl font-bold text-white">
+              {selectedStock ? `${selectedStock.symbol} News & Events` : 'Market Events Intelligence'}
+            </h2>
+            <p className="text-sm text-slate-400">
+              {selectedStock 
+                ? `AI-powered insights for ${selectedStock.name}`
+                : 'AI-powered market events • Real-time analysis'
+              }
+            </p>
           </div>
         </div>
         
@@ -135,17 +167,27 @@ const MarketNews = () => {
         </div>
       </div>
 
-      {!newsArticles || newsArticles.length === 0 ? (
+      {!filteredArticles || filteredArticles.length === 0 ? (
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 text-center">
-          <p className="text-slate-400 mb-2">No market events available</p>
-          <p className="text-xs text-slate-500">AI analysis will appear as market events develop</p>
+          <p className="text-slate-400 mb-2">
+            {selectedStock 
+              ? `No recent events found for ${selectedStock.symbol}`
+              : 'No market events available'
+            }
+          </p>
+          <p className="text-xs text-slate-500">
+            {selectedStock 
+              ? 'Try searching for another stock or check back later'
+              : 'AI analysis will appear as market events develop'
+            }
+          </p>
           <Button onClick={() => refetch()} variant="outline" size="sm" className="mt-4">
             <RefreshCw className="w-4 h-4 mr-2" />
             Scan for Events
           </Button>
         </div>
       ) : (
-        newsArticles.map((article) => (
+        filteredArticles.map((article) => (
           <div key={article.id} className={`bg-slate-800/50 backdrop-blur-xl rounded-2xl border p-4 md:p-6 hover:bg-slate-700/30 transition-all duration-300 ${getSentimentColor(article.sentiment)}`}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import ProfitWidget from '@/components/ProfitWidget';
@@ -7,9 +6,16 @@ import MarketNews from '@/components/MarketNews';
 import TechnicalAnalysis from '@/components/TechnicalAnalysis';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import UserProfile from '@/components/UserProfile';
+import StockSearch from '@/components/StockSearch';
 import { BarChart3, Newspaper, Target, Menu, X, RefreshCw, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+
+interface Stock {
+  symbol: string;
+  name: string;
+  sector: string;
+}
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
@@ -21,6 +27,11 @@ const Index = () => {
   const [apiCallsToday, setApiCallsToday] = useState(0);
   const [userActive, setUserActive] = useState(true);
   const [lastActivity, setLastActivity] = useState(new Date());
+  const [selectedStock, setSelectedStock] = useState<Stock>({
+    symbol: 'RELIANCE',
+    name: 'Reliance Industries Ltd',
+    sector: 'Oil & Gas'
+  });
 
   // Load stored data on mount
   useEffect(() => {
@@ -230,7 +241,7 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">The Undercurrent</h1>
-              <p className="text-xs text-slate-400">AI Market Analysis</p>
+              <p className="text-xs text-slate-400">AI Stock Analysis • {selectedStock.symbol}</p>
             </div>
           </div>
           
@@ -316,25 +327,28 @@ const Index = () => {
           </div>
         ) : (
           <div className="max-w-4xl mx-auto space-y-6">
+            {/* Stock Search - Always visible at top */}
+            <StockSearch selectedStock={selectedStock} onStockSelect={setSelectedStock} />
+            
             {activeTab === 'overview' && (
               <>
                 <ProfitWidget />
                 <div className="grid gap-6 lg:grid-cols-2">
                   <div className="lg:col-span-2">
-                    <ImpactAnalysis />
+                    <ImpactAnalysis selectedStock={selectedStock} />
                   </div>
                   <div className="lg:col-span-2">
-                    <MarketNews />
+                    <MarketNews selectedStock={selectedStock} />
                   </div>
                 </div>
               </>
             )}
             
-            {activeTab === 'news' && <MarketNews />}
+            {activeTab === 'news' && <MarketNews selectedStock={selectedStock} />}
             
-            {activeTab === 'impact' && <ImpactAnalysis />}
+            {activeTab === 'impact' && <ImpactAnalysis selectedStock={selectedStock} />}
             
-            {activeTab === 'technical' && <TechnicalAnalysis />}
+            {activeTab === 'technical' && <TechnicalAnalysis selectedStock={selectedStock} />}
           </div>
         )}
 
@@ -350,6 +364,9 @@ const Index = () => {
               </div>
               <div className="text-xs text-slate-500">
                 Next: {getNextCallTime()} • {userActive ? 'Active' : 'Idle'}
+              </div>
+              <div className="text-xs text-slate-400">
+                Analyzing: {selectedStock.symbol}
               </div>
             </div>
             <span className="text-xs text-slate-400">
