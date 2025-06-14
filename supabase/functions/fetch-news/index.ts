@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -155,17 +154,26 @@ async function generateComprehensiveMarketAnalysis(supabaseClient: any, marketEv
           "event": "Brief description of major event",
           "impact": "Specific market impact explanation",
           "sectors_affected": ["sector1", "sector2"],
-          "expected_points_impact": number (estimated Nifty 50 points impact, -200 to +200),
+          "impact_strength": "very_weak|weak|moderate|strong|very_strong",
+          "impact_direction": "positive|negative|neutral",
           "confidence_score": number (0-100)
         }
       ],
       "overall_sentiment": "positive|negative|neutral",
-      "overall_expected_impact": number (total estimated Nifty 50 points impact),
+      "overall_impact_strength": "very_weak|weak|moderate|strong|very_strong",
+      "overall_impact_direction": "positive|negative|neutral",
       "risk_factors": ["factor1", "factor2"],
       "opportunities": ["opportunity1", "opportunity2"]
     }
 
-    Focus on Indian market context, Nifty 50 impact, and provide specific, actionable insights. Respond only with valid JSON.`
+    For impact_strength, use:
+    - very_weak: Minor news with minimal market relevance
+    - weak: Some market relevance but limited immediate impact
+    - moderate: Notable impact on specific sectors or indices
+    - strong: Significant impact likely to move markets
+    - very_strong: Major event with substantial market-wide implications
+
+    Focus on Indian market context and provide specific, actionable insights. Respond only with valid JSON.`
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -208,16 +216,32 @@ async function generateComprehensiveMarketAnalysis(supabaseClient: any, marketEv
 
     const marketAnalysis = JSON.parse(jsonMatch[0])
     
+    // Convert strength indicators to numeric values for database storage
+    const strengthToNumeric = (strength: string): number => {
+      switch (strength) {
+        case 'very_weak': return -1
+        case 'weak': return -0.5
+        case 'moderate': return 0
+        case 'strong': return 0.5
+        case 'very_strong': return 1
+        default: return 0
+      }
+    }
+
     // Create a comprehensive market analysis entry
+    const overallImpactValue = strengthToNumeric(marketAnalysis.overall_impact_strength || 'moderate')
+    const directionMultiplier = marketAnalysis.overall_impact_direction === 'negative' ? -1 : 
+                               marketAnalysis.overall_impact_direction === 'positive' ? 1 : 0
+
     const { error: analysisError } = await supabaseClient
       .from('market_analysis')
       .insert({
-        news_article_id: null, // This is a comprehensive analysis, not tied to a specific article
+        news_article_id: null,
         what_happened: marketAnalysis.market_overview || 'Market events analysis',
         why_matters: `Key factors: ${marketAnalysis.risk_factors?.join(', ') || 'Multiple market factors'}. Opportunities: ${marketAnalysis.opportunities?.join(', ') || 'Various opportunities'}`,
         market_impact_description: marketAnalysis.key_events?.map(e => `${e.event}: ${e.impact}`).join('. ') || 'Market impact from multiple events',
-        expected_points_impact: marketAnalysis.overall_expected_impact || 0,
-        confidence_score: 85 // High confidence for comprehensive analysis
+        expected_points_impact: overallImpactValue * directionMultiplier,
+        confidence_score: 85
       })
 
     if (analysisError) {
@@ -228,15 +252,19 @@ async function generateComprehensiveMarketAnalysis(supabaseClient: any, marketEv
 
     // Also create individual event analyses
     if (marketAnalysis.key_events && Array.isArray(marketAnalysis.key_events)) {
-      for (const event of marketAnalysis.key_events.slice(0, 3)) { // Limit to top 3 events
+      for (const event of marketAnalysis.key_events.slice(0, 3)) {
+        const eventImpactValue = strengthToNumeric(event.impact_strength || 'moderate')
+        const eventDirectionMultiplier = event.impact_direction === 'negative' ? -1 : 
+                                       event.impact_direction === 'positive' ? 1 : 0
+
         await supabaseClient
           .from('market_analysis')
           .insert({
             news_article_id: null,
             what_happened: event.event || 'Market event',
             why_matters: event.impact || 'Market impact',
-            market_impact_description: `Sectors affected: ${event.sectors_affected?.join(', ') || 'Multiple sectors'}. ${event.impact || ''}`,
-            expected_points_impact: event.expected_points_impact || 0,
+            market_impact_description: `Sectors affected: ${event.sectors_affected?.join(', ') || 'Multiple sectors'}. Impact: ${event.impact_strength || 'moderate'} ${event.impact_direction || 'neutral'}. ${event.impact || ''}`,
+            expected_points_impact: eventImpactValue * eventDirectionMultiplier,
             confidence_score: event.confidence_score || 70
           })
       }

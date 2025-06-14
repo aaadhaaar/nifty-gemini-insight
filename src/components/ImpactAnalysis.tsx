@@ -8,6 +8,34 @@ import LoadingSpinner from './LoadingSpinner';
 const ImpactAnalysis = () => {
   const { data: impactData, isLoading, error } = useImpactAnalysis();
 
+  // Convert numeric impact to qualitative indicators
+  const getImpactStrength = (value: number): string => {
+    const absValue = Math.abs(value);
+    if (absValue >= 0.8) return 'Very Strong';
+    if (absValue >= 0.6) return 'Strong';
+    if (absValue >= 0.3) return 'Moderate';
+    if (absValue >= 0.1) return 'Weak';
+    return 'Very Weak';
+  };
+
+  const getImpactDirection = (value: number): string => {
+    if (value > 0.1) return 'Positive';
+    if (value < -0.1) return 'Negative';
+    return 'Neutral';
+  };
+
+  const getImpactColor = (value: number): string => {
+    if (value > 0.1) return 'text-emerald-400';
+    if (value < -0.1) return 'text-red-400';
+    return 'text-yellow-400';
+  };
+
+  const getImpactBgColor = (value: number): string => {
+    if (value > 0.1) return 'bg-emerald-500/20 border-emerald-500/30';
+    if (value < -0.1) return 'bg-red-500/20 border-red-500/30';
+    return 'bg-yellow-500/20 border-yellow-500/30';
+  };
+
   const chartData = useMemo(() => {
     if (!impactData || impactData.length === 0) return [];
 
@@ -45,23 +73,17 @@ const ImpactAnalysis = () => {
     if (!impactData || impactData.length === 0) return null;
 
     const totalImpact = impactData.reduce((sum, item) => sum + (item.expected_points_impact || 0), 0);
-    const positiveEvents = impactData.filter(item => (item.expected_points_impact || 0) > 0);
-    const negativeEvents = impactData.filter(item => (item.expected_points_impact || 0) < 0);
+    const positiveEvents = impactData.filter(item => (item.expected_points_impact || 0) > 0.1);
+    const negativeEvents = impactData.filter(item => (item.expected_points_impact || 0) < -0.1);
     const avgConfidence = impactData.reduce((sum, item) => sum + (item.confidence_score || 0), 0) / impactData.length;
-
-    // Identify key themes
-    const themes = impactData.map(item => item.why_matters.toLowerCase())
-      .join(' ')
-      .split(/[.,;]/)
-      .filter(phrase => phrase.trim().length > 10)
-      .slice(0, 3);
 
     return {
       totalImpact,
+      totalImpactStrength: getImpactStrength(totalImpact),
+      totalImpactDirection: getImpactDirection(totalImpact),
       positiveEvents: positiveEvents.length,
       negativeEvents: negativeEvents.length,
       avgConfidence: Math.round(avgConfidence),
-      themes,
       latestUpdate: impactData[0]?.created_at
     };
   }, [impactData]);
@@ -127,17 +149,15 @@ const ImpactAnalysis = () => {
       {/* Market Overview Cards */}
       {marketSummary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-3">
+          <div className={`rounded-xl p-3 border ${getImpactBgColor(marketSummary.totalImpact)}`}>
             <div className="flex items-center space-x-2 mb-1">
               <BarChart3 className="w-4 h-4 text-blue-400" />
               <span className="text-xs text-blue-300">Net Impact</span>
             </div>
-            <div className={`text-lg font-bold ${
-              marketSummary.totalImpact >= 0 ? 'text-emerald-400' : 'text-red-400'
-            }`}>
-              {marketSummary.totalImpact > 0 ? '+' : ''}{marketSummary.totalImpact}
+            <div className={`text-lg font-bold ${getImpactColor(marketSummary.totalImpact)}`}>
+              {marketSummary.totalImpactStrength}
             </div>
-            <div className="text-xs text-slate-400">Nifty Points</div>
+            <div className="text-xs text-slate-400">{marketSummary.totalImpactDirection}</div>
           </div>
 
           <div className="bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 rounded-xl p-3">
@@ -176,70 +196,79 @@ const ImpactAnalysis = () => {
 
       {/* Market Events Analysis */}
       <div className="space-y-4">
-        {impactData.slice(0, 5).map((item) => (
-          <div key={item.id} className="border border-slate-700/50 rounded-xl p-4 hover:bg-slate-700/30 transition-all duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 space-y-3 sm:space-y-0">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                  <span className="text-xs text-slate-400">Market Event Analysis</span>
-                  <span className="text-xs text-slate-500">
-                    {new Date(item.created_at).toLocaleTimeString()}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2 flex-shrink-0">
-                <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs ${
-                  (item.expected_points_impact || 0) >= 0
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                }`}>
-                  {(item.expected_points_impact || 0) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  <span className="font-medium">
-                    {(item.expected_points_impact || 0) > 0 ? '+' : ''}{item.expected_points_impact || 0} pts
-                  </span>
+        {impactData.slice(0, 5).map((item) => {
+          const impactStrength = getImpactStrength(item.expected_points_impact || 0);
+          const impactDirection = getImpactDirection(item.expected_points_impact || 0);
+          const impactColor = getImpactColor(item.expected_points_impact || 0);
+          const impactBgColor = getImpactBgColor(item.expected_points_impact || 0);
+          
+          return (
+            <div key={item.id} className="border border-slate-700/50 rounded-xl p-4 hover:bg-slate-700/30 transition-all duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 space-y-3 sm:space-y-0">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                    <span className="text-xs text-slate-400">Market Event Analysis</span>
+                    <span className="text-xs text-slate-500">
+                      {new Date(item.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
                 </div>
                 
-                <div className={`px-2 py-1 rounded-full text-xs font-medium border ${
-                  (item.confidence_score || 0) >= 80 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                  (item.confidence_score || 0) >= 60 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
-                  'bg-red-500/20 text-red-300 border-red-500/30'
-                }`}>
-                  {item.confidence_score || 0}%
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Zap className="w-4 h-4 text-blue-400" />
-                  <span className="text-xs font-medium text-blue-300">What Happened</span>
-                </div>
-                <p className="text-sm text-slate-300 leading-relaxed">{item.what_happened}</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-                <div className="flex items-center space-x-2 mb-2">
-                  <AlertTriangle className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs font-medium text-purple-300">Market Impact</span>
-                </div>
-                <p className="text-sm text-slate-300 leading-relaxed">{item.why_matters}</p>
-              </div>
-
-              {item.market_impact_description && (
-                <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Target className="w-4 h-4 text-orange-400" />
-                    <span className="text-xs font-medium text-orange-300">Detailed Analysis</span>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs border ${impactBgColor}`}>
+                    {(item.expected_points_impact || 0) >= 0.1 ? <TrendingUp className="w-3 h-3" /> : 
+                     (item.expected_points_impact || 0) <= -0.1 ? <TrendingDown className="w-3 h-3" /> : 
+                     <Activity className="w-3 h-3" />}
+                    <span className={`font-medium ${impactColor}`}>
+                      {impactStrength}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className={`font-medium ${impactColor}`}>
+                      {impactDirection}
+                    </span>
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{item.market_impact_description}</p>
+                  
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                    (item.confidence_score || 0) >= 80 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                    (item.confidence_score || 0) >= 60 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                    'bg-red-500/20 text-red-300 border-red-500/30'
+                  }`}>
+                    {item.confidence_score || 0}%
+                  </div>
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Zap className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-medium text-blue-300">What Happened</span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">{item.what_happened}</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-medium text-purple-300">Market Impact</span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">{item.why_matters}</p>
+                </div>
+
+                {item.market_impact_description && (
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Target className="w-4 h-4 text-orange-400" />
+                      <span className="text-xs font-medium text-orange-300">Detailed Analysis</span>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">{item.market_impact_description}</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Comprehensive Market Summary */}
@@ -250,9 +279,9 @@ const ImpactAnalysis = () => {
             <span className="text-sm font-medium text-indigo-300">Market Overview</span>
           </div>
           <p className="text-sm text-slate-300 mb-3">
-            Current market analysis shows a net {marketSummary.totalImpact >= 0 ? 'positive' : 'negative'} sentiment 
-            with an estimated impact of {marketSummary.totalImpact > 0 ? '+' : ''}{marketSummary.totalImpact} points 
-            on Nifty 50. Analysis includes {marketSummary.positiveEvents} positive and {marketSummary.negativeEvents} negative 
+            Current market analysis shows a <span className={`font-medium ${getImpactColor(marketSummary.totalImpact)}`}>
+              {marketSummary.totalImpactStrength.toLowerCase()} {marketSummary.totalImpactDirection.toLowerCase()}
+            </span> sentiment. Analysis includes {marketSummary.positiveEvents} positive and {marketSummary.negativeEvents} negative 
             market events with {marketSummary.avgConfidence}% average confidence.
           </p>
           {marketSummary.latestUpdate && (
