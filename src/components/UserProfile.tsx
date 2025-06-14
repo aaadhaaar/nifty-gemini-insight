@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,12 +16,21 @@ import { User, LogOut, Settings } from 'lucide-react';
 
 const UserProfile = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const handleSignOut = async () => {
     setLoading(true);
     await signOut();
     setLoading(false);
+  };
+
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
+  const handleSettingsClick = () => {
+    navigate('/settings');
   };
 
   if (!user) return null;
@@ -56,11 +66,17 @@ const UserProfile = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-slate-700" />
-        <DropdownMenuItem className="text-slate-300 focus:bg-slate-700 focus:text-white">
+        <DropdownMenuItem 
+          onClick={handleProfileClick}
+          className="text-slate-300 focus:bg-slate-700 focus:text-white cursor-pointer"
+        >
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="text-slate-300 focus:bg-slate-700 focus:text-white">
+        <DropdownMenuItem 
+          onClick={handleSettingsClick}
+          className="text-slate-300 focus:bg-slate-700 focus:text-white cursor-pointer"
+        >
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
@@ -68,7 +84,7 @@ const UserProfile = () => {
         <DropdownMenuItem 
           onClick={handleSignOut}
           disabled={loading}
-          className="text-slate-300 focus:bg-slate-700 focus:text-white"
+          className="text-slate-300 focus:bg-slate-700 focus:text-white cursor-pointer"
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>{loading ? 'Signing out...' : 'Sign out'}</span>
