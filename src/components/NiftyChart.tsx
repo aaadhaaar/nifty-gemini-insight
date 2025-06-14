@@ -11,41 +11,51 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create the Finlogix container
-    const finlogixContainer = document.createElement('div');
-    finlogixContainer.className = 'finlogix-container';
+    // Create TradingView widget script
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      "autosize": true,
+      "symbol": "NSE:NIFTY",
+      "interval": "D",
+      "timezone": "Asia/Kolkata",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "enable_publishing": false,
+      "backgroundColor": "rgba(15, 23, 42, 1)",
+      "gridColor": "rgba(71, 85, 105, 0.3)",
+      "hide_top_toolbar": false,
+      "hide_legend": false,
+      "save_image": false,
+      "calendar": false,
+      "hide_volume": false,
+      "support_host": "https://www.tradingview.com"
+    });
 
-    // Create and load the Finlogix script
-    const widgetScript = document.createElement('script');
-    widgetScript.type = 'text/javascript';
-    widgetScript.src = 'https://widget.finlogix.com/Widget.js';
+    // Create the widget container
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'tradingview-widget-container';
+    widgetContainer.style.height = '100%';
+    widgetContainer.style.width = '100%';
     
-    widgetScript.onload = () => {
-      // Initialize the widget after the script loads
-      if (window.Widget) {
-        window.Widget.init({
-          widgetId: "4addd754-ee90-475f-9eb5-31110d1ab21a",
-          type: "SingleSymbol",
-          language: "en",
-          showBrand: true,
-          isShowTradeButton: true,
-          isShowBeneathLink: true,
-          isShowDataFromACYInfo: true,
-          symbolName: "INDIA50",
-          withButton: false,
-          isAdaptive: true
-        });
-      }
-    };
+    const widgetContent = document.createElement('div');
+    widgetContent.className = 'tradingview-widget-container__widget';
+    widgetContent.style.height = 'calc(100% - 32px)';
+    widgetContent.style.width = '100%';
+    
+    widgetContainer.appendChild(widgetContent);
+    widgetContainer.appendChild(script);
 
     if (containerRef.current) {
-      containerRef.current.appendChild(finlogixContainer);
-      document.head.appendChild(widgetScript);
+      containerRef.current.appendChild(widgetContainer);
     }
 
     return () => {
-      // Cleanup: remove script when component unmounts
-      const existingScript = document.querySelector('script[src="https://widget.finlogix.com/Widget.js"]');
+      // Cleanup: remove scripts when component unmounts
+      const existingScript = document.querySelector('script[src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"]');
       if (existingScript) {
         existingScript.remove();
       }
@@ -65,11 +75,11 @@ const NiftyChart = () => {
         </div>
       </div>
 
-      {/* Finlogix Chart Container */}
+      {/* TradingView Chart Container */}
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="finlogix-widget-container h-full"
+          className="tradingview-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
@@ -92,25 +102,5 @@ const NiftyChart = () => {
     </div>
   );
 };
-
-// Extend the Window interface to include the Widget object
-declare global {
-  interface Window {
-    Widget: {
-      init: (config: {
-        widgetId: string;
-        type: string;
-        language: string;
-        showBrand: boolean;
-        isShowTradeButton: boolean;
-        isShowBeneathLink: boolean;
-        isShowDataFromACYInfo: boolean;
-        symbolName: string;
-        withButton: boolean;
-        isAdaptive: boolean;
-      }) => void;
-    };
-  }
-}
 
 export default NiftyChart;
