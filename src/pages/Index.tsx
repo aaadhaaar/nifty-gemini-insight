@@ -17,6 +17,59 @@ const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lastApiCall, setLastApiCall] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [apiCallsToday, setApiCallsToday] = useState(0);
+  const [userActive, setUserActive] = useState(true);
+  const [lastActivity, setLastActivity] = useState(new Date());
+
+  // Load stored data on mount
+  useEffect(() => {
+    const storedLastCall = localStorage.getItem('lastApiCall');
+    const storedCallsToday = localStorage.getItem('apiCallsToday');
+    const storedDate = localStorage.getItem('lastApiCallDate');
+    
+    const today = new Date().toDateString();
+    
+    if (storedLastCall && storedDate === today) {
+      setLastApiCall(new Date(storedLastCall));
+      setApiCallsToday(parseInt(storedCallsToday || '0', 10));
+    } else {
+      // Reset daily counter if it's a new day
+      localStorage.setItem('apiCallsToday', '0');
+      localStorage.setItem('lastApiCallDate', today);
+      setApiCallsToday(0);
+    }
+  }, []);
+
+  // Track user activity
+  useEffect(() => {
+    const handleActivity = () => {
+      setUserActive(true);
+      setLastActivity(new Date());
+    };
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, handleActivity, true);
+    });
+
+    // Check for inactivity every minute
+    const inactivityTimer = setInterval(() => {
+      const now = new Date();
+      const timeSinceActivity = now.getTime() - lastActivity.getTime();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (timeSinceActivity > fiveMinutes) {
+        setUserActive(false);
+      }
+    }, 60000);
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleActivity, true);
+      });
+      clearInterval(inactivityTimer);
+    };
+  }, [lastActivity]);
 
   // Auto-update timestamp every minute
   useEffect(() => {
@@ -27,8 +80,49 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Smart interval calculation based on time and activity
+  const getSmartInterval = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // Market hours (9 AM to 4 PM IST) - more frequent
+    if (hour >= 9 && hour <= 16) {
+      return userActive ? 45 * 60 * 1000 : 90 * 60 * 1000; // 45min active, 90min inactive
+    }
+    // Evening (5 PM to 10 PM) - moderate frequency
+    else if (hour >= 17 && hour <= 22) {
+      return userActive ? 90 * 60 * 1000 : 3 * 60 * 60 * 1000; // 90min active, 3hr inactive
+    }
+    // Night (11 PM to 8 AM) - very infrequent
+    else {
+      return 6 * 60 * 60 * 1000; // 6 hours regardless of activity
+    }
+  };
+
+  // Check if we should make an API call
+  const shouldMakeApiCall = () => {
+    if (apiCallsToday >= 60) return false; // Daily limit reached
+    if (!lastApiCall) return true; // First call of the session
+    
+    const now = new Date();
+    const timeSinceLastCall = now.getTime() - lastApiCall.getTime();
+    const smartInterval = getSmartInterval();
+    
+    return timeSinceLastCall >= smartInterval;
+  };
+
   // Function to fetch market data
   const fetchMarketData = async (isManual = false) => {
+    if (!isManual && !shouldMakeApiCall()) {
+      console.log('Skipping API call - not needed yet or daily limit reached');
+      return;
+    }
+
+    if (apiCallsToday >= 60) {
+      console.log('Daily API limit reached');
+      return;
+    }
+
     try {
       console.log('Triggering market events fetch...');
       setIsRefreshing(true);
@@ -38,7 +132,17 @@ const Index = () => {
         console.error('Error fetching market data:', error);
       } else {
         console.log('Market data fetch result:', data);
-        setLastApiCall(new Date());
+        
+        const now = new Date();
+        const newCallCount = apiCallsToday + 1;
+        
+        setLastApiCall(now);
+        setApiCallsToday(newCallCount);
+        
+        // Store in localStorage
+        localStorage.setItem('lastApiCall', now.toISOString());
+        localStorage.setItem('apiCallsToday', newCallCount.toString());
+        localStorage.setItem('lastApiCallDate', now.toDateString());
       }
     } catch (error) {
       console.error('Error calling fetch-news function:', error);
@@ -47,29 +151,36 @@ const Index = () => {
     }
   };
 
-  // Check if we should fetch data automatically (only if no recent API call)
+  // Smart auto-fetch system
   useEffect(() => {
-    const checkAndFetch = () => {
-      const now = new Date();
+    // Initial check - only fetch if really needed (no data from today)
+    const checkInitialFetch = () => {
+      const storedDate = localStorage.getItem('lastApiCallDate');
+      const today = new Date().toDateString();
       
-      // Only fetch if:
-      // 1. No previous API call recorded, OR
-      // 2. Last API call was more than 2 hours ago
-      if (!lastApiCall || (now.getTime() - lastApiCall.getTime()) > 2 * 60 * 60 * 1000) {
+      // Only fetch on first load if no data from today
+      if (storedDate !== today && apiCallsToday === 0) {
         fetchMarketData();
       }
     };
 
-    // Check on mount
-    checkAndFetch();
+    checkInitialFetch();
 
-    // Set up interval to check every 30 minutes
-    const interval = setInterval(checkAndFetch, 30 * 60 * 1000);
+    // Set up smart interval checking
+    const smartInterval = setInterval(() => {
+      if (shouldMakeApiCall()) {
+        fetchMarketData();
+      }
+    }, 30 * 60 * 1000); // Check every 30 minutes
 
-    return () => clearInterval(interval);
-  }, [lastApiCall]);
+    return () => clearInterval(smartInterval);
+  }, [apiCallsToday, lastApiCall, userActive]);
 
   const handleManualRefresh = () => {
+    if (apiCallsToday >= 60) {
+      console.log('Cannot refresh: Daily limit reached');
+      return;
+    }
     fetchMarketData(true);
   };
 
@@ -88,6 +199,22 @@ const Index = () => {
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     const diffInHours = Math.floor(diffInMinutes / 60);
     return `${diffInHours}h ago`;
+  };
+
+  const getNextCallTime = () => {
+    if (!lastApiCall) return 'Soon';
+    if (apiCallsToday >= 60) return 'Tomorrow';
+    
+    const smartInterval = getSmartInterval();
+    const nextCallTime = new Date(lastApiCall.getTime() + smartInterval);
+    const now = new Date();
+    
+    if (nextCallTime <= now) return 'Soon';
+    
+    const diffInMinutes = Math.floor((nextCallTime.getTime() - now.getTime()) / (1000 * 60));
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    return `${diffInHours}h`;
   };
 
   return (
@@ -109,7 +236,7 @@ const Index = () => {
             <UserProfile />
             <Button
               onClick={handleManualRefresh}
-              disabled={isRefreshing}
+              disabled={isRefreshing || apiCallsToday >= 60}
               size="sm"
               variant="ghost"
               className="text-slate-300 hover:text-white hover:bg-slate-800"
@@ -207,17 +334,22 @@ const Index = () => {
           </div>
         )}
 
-        {/* Status Bar */}
+        {/* Enhanced Status Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700/50 p-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-              <span className="text-xs text-slate-400">
-                Last API call: {getTimeSinceLastCall()} • Auto-sync every 2 hours
-              </span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : apiCallsToday >= 60 ? 'bg-red-400' : 'bg-green-400'}`}></div>
+                <span className="text-xs text-slate-400">
+                  {apiCallsToday}/60 calls • Last: {getTimeSinceLastCall()}
+                </span>
+              </div>
+              <div className="text-xs text-slate-500">
+                Next: {getNextCallTime()} • {userActive ? 'Active' : 'Idle'}
+              </div>
             </div>
             <span className="text-xs text-slate-400">
-              UI refresh: {lastUpdate}
+              UI: {lastUpdate}
             </span>
           </div>
         </div>
