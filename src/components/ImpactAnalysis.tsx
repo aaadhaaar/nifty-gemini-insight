@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { TrendingUp, TrendingDown, AlertTriangle, Target, Brain, Activity } from 'lucide-react';
+import { Target, Brain } from 'lucide-react';
 import { useImpactAnalysis } from '@/hooks/useImpactAnalysis';
 import LoadingSpinner from './LoadingSpinner';
 import ImpactChart from './ImpactChart';
+import ImpactMetricsCard from './ImpactMetricsCard';
+import AnalysisInsights from './AnalysisInsights';
 
 interface Stock {
   symbol: string;
@@ -63,36 +65,6 @@ const ImpactAnalysis: React.FC<ImpactAnalysisProps> = ({ selectedStock }) => {
   const overallImpact = displayAnalysis.reduce((sum, item) => sum + item.expected_points_impact, 0) / displayAnalysis.length;
   const averageConfidence = displayAnalysis.reduce((sum, item) => sum + item.confidence_score, 0) / displayAnalysis.length;
 
-  const getSentimentFromImpact = (impact: number) => {
-    if (impact > 0.3) return 'bullish';
-    if (impact < -0.3) return 'bearish';
-    return 'neutral';
-  };
-
-  const getSentimentColor = (sentiment: string) => {
-    switch (sentiment) {
-      case 'bullish': return 'text-emerald-400';
-      case 'bearish': return 'text-red-400';
-      default: return 'text-yellow-400';
-    }
-  };
-
-  const getSentimentIcon = (sentiment: string) => {
-    switch (sentiment) {
-      case 'bullish': return <TrendingUp className="w-5 h-5" />;
-      case 'bearish': return <TrendingDown className="w-5 h-5" />;
-      default: return <AlertTriangle className="w-5 h-5" />;
-    }
-  };
-
-  const getImpactStrength = (impact: number) => {
-    const abs = Math.abs(impact);
-    if (abs >= 1.5) return 'Very Strong';
-    if (abs >= 1.0) return 'Strong';
-    if (abs >= 0.5) return 'Moderate';
-    return 'Weak';
-  };
-
   // Prepare chart data
   const chartData = displayAnalysis.slice(-10).map((item, index) => ({
     time: new Date(item.created_at).toLocaleTimeString('en-US', { 
@@ -102,8 +74,6 @@ const ImpactAnalysis: React.FC<ImpactAnalysisProps> = ({ selectedStock }) => {
     cumulativeImpact: displayAnalysis.slice(0, index + 1).reduce((sum, d) => sum + d.expected_points_impact, 0) / (index + 1),
     articleCount: index + 1
   }));
-
-  const overallSentiment = getSentimentFromImpact(overallImpact);
 
   return (
     <div className="space-y-6">
@@ -127,101 +97,14 @@ const ImpactAnalysis: React.FC<ImpactAnalysisProps> = ({ selectedStock }) => {
           </div>
         </div>
 
-        {/* Overall Impact Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-slate-700/30 rounded-xl p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <div className={getSentimentColor(overallSentiment)}>
-                {getSentimentIcon(overallSentiment)}
-              </div>
-              <h3 className="font-semibold text-white">Market Sentiment</h3>
-            </div>
-            <p className={`text-lg font-bold capitalize ${getSentimentColor(overallSentiment)}`}>
-              {overallSentiment}
-            </p>
-            <p className="text-sm text-slate-400">
-              Impact: {overallImpact > 0 ? '+' : ''}{overallImpact.toFixed(2)} points
-            </p>
-          </div>
+        <ImpactMetricsCard
+          overallImpact={overallImpact}
+          averageConfidence={averageConfidence}
+          analysisCount={displayAnalysis.length}
+          selectedStock={selectedStock}
+        />
 
-          <div className="bg-slate-700/30 rounded-xl p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Activity className="w-5 h-5 text-blue-400" />
-              <h3 className="font-semibold text-white">Analysis Strength</h3>
-            </div>
-            <p className="text-lg font-bold text-blue-400">
-              {getImpactStrength(overallImpact)}
-            </p>
-            <p className="text-sm text-slate-400">
-              Confidence: {averageConfidence.toFixed(0)}%
-            </p>
-          </div>
-
-          <div className="bg-slate-700/30 rounded-xl p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Target className="w-5 h-5 text-purple-400" />
-              <h3 className="font-semibold text-white">Events Analyzed</h3>
-            </div>
-            <p className="text-lg font-bold text-purple-400">{displayAnalysis.length}</p>
-            <p className="text-sm text-slate-400">
-              {selectedStock ? 'Stock-specific' : 'Market-wide'}
-            </p>
-          </div>
-        </div>
-
-        {/* Market Analysis Insights */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
-            <Brain className="w-5 h-5 text-orange-400" />
-            <span>Live Market Insights</span>
-          </h3>
-          
-          <div className="grid gap-4">
-            {displayAnalysis.slice(0, 4).map((analysis, index) => (
-              <div key={analysis.id} className={`p-4 rounded-xl border ${
-                analysis.expected_points_impact > 0.5 
-                  ? 'bg-emerald-500/10 border-emerald-500/20' 
-                  : analysis.expected_points_impact < -0.5
-                  ? 'bg-red-500/10 border-red-500/20'
-                  : 'bg-blue-500/10 border-blue-500/20'
-              }`}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      analysis.expected_points_impact > 0.5 ? 'bg-emerald-400' : 
-                      analysis.expected_points_impact < -0.5 ? 'bg-red-400' : 'bg-blue-400'
-                    }`}></div>
-                    <span className={`text-xs font-medium ${
-                      analysis.expected_points_impact > 0.5 ? 'text-emerald-300' : 
-                      analysis.expected_points_impact < -0.5 ? 'text-red-300' : 'text-blue-300'
-                    }`}>
-                      {analysis.expected_points_impact > 0 ? 'POSITIVE' : analysis.expected_points_impact < 0 ? 'NEGATIVE' : 'NEUTRAL'} IMPACT
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs text-slate-400">
-                    <span>{analysis.confidence_score}% confidence</span>
-                    <span>•</span>
-                    <span>{new Date(analysis.created_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                
-                <h4 className="font-semibold text-white mb-2 text-sm">
-                  {analysis.what_happened}
-                </h4>
-                
-                <p className="text-sm text-slate-300 mb-3">
-                  {analysis.why_matters}
-                </p>
-                
-                <div className="pt-2 border-t border-slate-600/30">
-                  <p className="text-xs text-slate-400">
-                    <span className="font-medium">Market Impact:</span> {analysis.market_impact_description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <AnalysisInsights analysisData={displayAnalysis} />
       </div>
 
       {/* Impact Trend Chart */}
