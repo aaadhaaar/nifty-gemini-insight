@@ -6,10 +6,21 @@ import { Button } from '@/components/ui/button';
 const ProfitWidget = () => {
   const [widgetError, setWidgetError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Add the message listener for the widget - exactly like your working code
+    // Check if we're on the right route - widget should only work on main app
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/') {
+      console.log('Widget not loading - not on main route');
+      setWidgetError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // Add the message listener for the widget
     const handleMessage = (msg: MessageEvent) => {
+      console.log('Widget message received:', msg.data);
       const widget = document.getElementById('MiniChartWidget-u3t49oz');
       
       if (!widget) return;
@@ -17,39 +28,67 @@ const ProfitWidget = () => {
       const styles = msg.data?.styles;
       const token = msg.data?.token;
       const urlToken = new URL((widget as HTMLIFrameElement).src)?.searchParams?.get?.('token');
+      
       if (styles && token === urlToken) {
         Object.keys(styles).forEach(key => 
           widget.style.setProperty(key, styles[key])
         );
+        setIsLoading(false);
+        console.log('Widget styles applied successfully');
       }
     };
 
-    // Use window.top like in your working code
-    window.top?.addEventListener("message", handleMessage);
+    // Add message listener
+    window.addEventListener("message", handleMessage);
 
-    // Much more lenient error detection - only trigger if widget completely fails to load
-    const errorTimeout = setTimeout(() => {
-      const widget = document.getElementById('MiniChartWidget-u3t49oz') as HTMLIFrameElement;
-      if (widget) {
-        // Only set error if the iframe src is empty or widget is completely broken
-        widget.onerror = () => {
-          console.log('Widget failed to load');
-          setWidgetError(true);
-        };
-      }
-    }, 10000); // Wait 10 seconds before even checking
+    // Set up widget load detection
+    const widget = document.getElementById('MiniChartWidget-u3t49oz') as HTMLIFrameElement;
+    
+    if (widget) {
+      // Handle successful load
+      widget.onload = () => {
+        console.log('Widget iframe loaded');
+        setIsLoading(false);
+      };
+
+      // Handle load errors
+      widget.onerror = () => {
+        console.log('Widget failed to load');
+        setWidgetError(true);
+        setIsLoading(false);
+      };
+
+      // Timeout for widget loading
+      const loadTimeout = setTimeout(() => {
+        // Check if widget is actually responsive
+        try {
+          const iframeDoc = widget.contentDocument || widget.contentWindow?.document;
+          if (!iframeDoc || iframeDoc.body.children.length === 0) {
+            console.log('Widget appears empty after timeout');
+            setWidgetError(true);
+          }
+        } catch (error) {
+          console.log('Widget cross-origin access blocked - this is normal');
+          // Don't set error for cross-origin issues, widget might still work
+        }
+        setIsLoading(false);
+      }, 15000);
+
+      return () => {
+        window.removeEventListener("message", handleMessage);
+        clearTimeout(loadTimeout);
+      };
+    }
 
     return () => {
-      if (window.top) {
-        window.top.removeEventListener("message", handleMessage);
-      }
-      clearTimeout(errorTimeout);
+      window.removeEventListener("message", handleMessage);
     };
   }, []);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     setWidgetError(false);
+    setIsLoading(true);
     
     // Force refresh the iframe
     const widget = document.getElementById('MiniChartWidget-u3t49oz') as HTMLIFrameElement;
@@ -58,7 +97,7 @@ const ProfitWidget = () => {
       widget.src = '';
       setTimeout(() => {
         widget.src = currentSrc;
-        setIsRefreshing(false);
+        setTimeout(() => setIsRefreshing(false), 2000);
       }, 100);
     }
   };
@@ -78,7 +117,7 @@ const ProfitWidget = () => {
           <div className="text-center">
             <p className="text-white font-medium mb-2">Widget Unavailable</p>
             <p className="text-slate-400 text-sm mb-4">
-              The market widget is temporarily unavailable. Please try refreshing or check back later.
+              The market widget cannot load on this page. Please navigate to the main dashboard to view the chart.
             </p>
             <Button 
               onClick={handleRefresh}
@@ -108,7 +147,16 @@ const ProfitWidget = () => {
         </div>
       </div>
       
-      <div className="flex justify-center">
+      <div className="relative flex justify-center">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 rounded-xl z-10">
+            <div className="flex flex-col items-center space-y-2">
+              <RefreshCw className="w-6 h-6 text-blue-400 animate-spin" />
+              <span className="text-sm text-slate-400">Loading widget...</span>
+            </div>
+          </div>
+        )}
+        
         <iframe
           style={{
             border: 'none',
@@ -120,6 +168,8 @@ const ProfitWidget = () => {
           src="https://widget.darqube.com/mini-chart-widget?token=673488bbcfce33d56834bcfc"
           id="MiniChartWidget-u3t49oz"
           title="Profit.com Market Widget"
+          allow="same-origin"
+          sandbox="allow-scripts allow-same-origin allow-forms"
         />
       </div>
     </div>
