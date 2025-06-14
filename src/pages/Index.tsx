@@ -3,10 +3,9 @@ import Header from '@/components/Header';
 import ProfitWidget from '@/components/ProfitWidget';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
 import MarketNews from '@/components/MarketNews';
-import TechnicalAnalysis from '@/components/TechnicalAnalysis';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import UserProfile from '@/components/UserProfile';
-import { BarChart3, Newspaper, Target, Menu, X, TrendingUp } from 'lucide-react';
+import { BarChart3, Newspaper, Target, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -175,8 +174,7 @@ const Index = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'news', label: 'News', icon: Newspaper },
-    { id: 'impact', label: 'Analysis', icon: Target },
-    { id: 'technical', label: 'Technical', icon: TrendingUp }
+    { id: 'impact', label: 'Analysis', icon: Target }
   ];
 
   const getTimeSinceLastCall = () => {
@@ -237,7 +235,7 @@ const Index = () => {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="border-t border-slate-700/50 md:hidden">
-            <div className="grid grid-cols-4 gap-1 p-2">
+            <div className="grid grid-cols-3 gap-1 p-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -311,8 +309,6 @@ const Index = () => {
             {activeTab === 'news' && <MarketNews />}
             
             {activeTab === 'impact' && <ImpactAnalysis />}
-            
-            {activeTab === 'technical' && <TechnicalAnalysis />}
           </div>
         )}
 
