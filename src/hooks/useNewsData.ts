@@ -20,23 +20,30 @@ export interface NewsArticle {
 
 export const useNewsData = () => {
   return useQuery({
-    queryKey: ['news-articles'],
+    queryKey: ['fresh-news-articles'],
     queryFn: async () => {
-      console.log('Fetching news articles from database...')
+      console.log('Fetching ultra-fresh news articles from database...')
+      
+      // Only get articles from the last 24 hours for maximum freshness
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+      
       const { data, error } = await supabase
         .from('news_articles')
         .select('*')
-        .order('published_at', { ascending: false })
-        .limit(20);
+        .gte('created_at', twentyFourHoursAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(15);
 
       if (error) {
-        console.error('Error fetching news:', error);
+        console.error('Error fetching fresh news:', error);
         throw error;
       }
 
-      console.log(`Fetched ${data?.length || 0} articles`)
+      console.log(`Fetched ${data?.length || 0} ultra-fresh articles (last 24h)`)
       return data as NewsArticle[];
     },
-    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes to show new data
+    refetchInterval: 15 * 60 * 1000, // Refetch every 15 minutes for fresh data
+    staleTime: 10 * 60 * 1000, // Consider data stale after 10 minutes
   });
 };

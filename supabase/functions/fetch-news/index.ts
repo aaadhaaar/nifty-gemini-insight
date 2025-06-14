@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Starting market events fetch process...')
+    console.log('Starting fresh market events fetch process...')
     
     // Check today's API usage
     const today = new Date().toISOString().split('T')[0]
@@ -41,24 +41,41 @@ serve(async (req) => {
 
     console.log(`Current usage: ${currentSearches}/${maxDailySearches} searches`)
     
-    // Market event focused search queries
-    const marketEventQueries = [
-      'Nifty 50 market events today India stock market breaking news',
-      'BSE Sensex major events corporate earnings RBI policy India',
-      'Indian stock market events mergers acquisitions IPO today',
-      'FII DII investment flows India stock market events',
-      'Indian banking sector events financial results policy changes'
+    // Fresh market event focused search queries - targeting TODAY's news
+    const freshMarketEventQueries = [
+      'Nifty 50 Sensex today live market news India stock exchange BSE NSE breaking',
+      'Indian stock market today earnings results RBI policy announcement live',
+      'India market news today IPO merger acquisition FII DII investment flows',
+      'BSE NSE today sector performance banking IT pharma auto stocks live',
+      'Indian rupee forex crude oil gold market impact today live news'
     ]
 
     const maxSearchesToday = Math.min(5, maxDailySearches - currentSearches)
     const allMarketEvents = []
 
+    // Clean up old news articles first (older than 48 hours)
+    const twoDaysAgo = new Date()
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    
+    await supabaseClient
+      .from('news_articles')
+      .delete()
+      .lt('created_at', twoDaysAgo.toISOString())
+
+    await supabaseClient
+      .from('market_analysis')
+      .delete()
+      .lt('created_at', twoDaysAgo.toISOString())
+
+    console.log('Cleaned up articles older than 48 hours')
+
     for (let i = 0; i < maxSearchesToday; i++) {
-      const query = marketEventQueries[i]
-      console.log(`Searching for market events: ${query}`)
+      const query = freshMarketEventQueries[i]
+      console.log(`Searching for TODAY's market events: ${query}`)
       
       try {
-        const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&freshness=pd&country=IN`, {
+        // Use 'pd' (past day) for ultra-fresh results and add market-specific filters
+        const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&freshness=pd&country=IN&search_lang=en&result_filter=web`, {
           headers: {
             'X-Subscription-Token': Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '',
             'Accept': 'application/json',
@@ -72,7 +89,7 @@ serve(async (req) => {
 
         const searchData = await braveResponse.json()
         const results = searchData.web?.results || []
-        console.log(`Found ${results.length} results for market events query`)
+        console.log(`Found ${results.length} fresh results for market events query`)
 
         // Update API usage count
         await supabaseClient
@@ -83,39 +100,48 @@ serve(async (req) => {
             search_count: currentSearches + i + 1
           })
 
-        // Extract market events from search results
+        // Extract and filter for ultra-fresh market events
         for (const result of results) {
           if (!result.title || !result.description) continue
 
-          if (isRelevantMarketEvent(result.title, result.description)) {
+          if (isUltraFreshMarketEvent(result.title, result.description)) {
+            // Additional freshness check - prioritize results with time indicators
+            const hasTimeIndicator = checkForTimeIndicators(result.title, result.description)
+            
             allMarketEvents.push({
               title: result.title,
               description: result.description,
               url: result.url || '',
               source: extractDomain(result.url || ''),
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              freshness_score: hasTimeIndicator ? 10 : 8
             })
           }
         }
       } catch (searchError) {
-        console.error(`Error processing market events query "${query}":`, searchError)
+        console.error(`Error processing fresh market events query "${query}":`, searchError)
         continue
       }
     }
 
-    console.log(`Collected ${allMarketEvents.length} market events`)
+    // Sort by freshness score and limit to most relevant
+    allMarketEvents.sort((a, b) => b.freshness_score - a.freshness_score)
+    const topFreshEvents = allMarketEvents.slice(0, 8)
 
-    // Generate comprehensive market impact analysis
-    if (allMarketEvents.length > 0) {
-      await generateComprehensiveMarketAnalysis(supabaseClient, allMarketEvents)
+    console.log(`Collected ${topFreshEvents.length} ultra-fresh market events`)
+
+    // Generate comprehensive market impact analysis for fresh events
+    if (topFreshEvents.length > 0) {
+      await generateComprehensiveMarketAnalysis(supabaseClient, topFreshEvents)
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        eventsProcessed: allMarketEvents.length,
+        eventsProcessed: topFreshEvents.length,
         searchesUsed: maxSearchesToday,
-        remainingSearches: maxDailySearches - (currentSearches + maxSearchesToday)
+        remainingSearches: maxDailySearches - (currentSearches + maxSearchesToday),
+        freshness: 'ultra-fresh'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
@@ -275,27 +301,48 @@ async function generateComprehensiveMarketAnalysis(supabaseClient: any, marketEv
   }
 }
 
-function isRelevantMarketEvent(title: string, description: string): boolean {
+function isUltraFreshMarketEvent(title: string, description: string): boolean {
   const text = `${title} ${description}`.toLowerCase()
   
+  // Enhanced keywords for fresh market events
   const relevantKeywords = [
     'nifty', 'sensex', 'bse', 'nse', 'stock market', 'shares', 'equity',
     'rbi', 'policy', 'rate', 'inflation', 'gdp', 'budget',
     'earnings', 'results', 'quarterly', 'profit', 'loss',
     'ipo', 'merger', 'acquisition', 'fii', 'dii',
     'banking', 'financial', 'it sector', 'pharma', 'auto',
-    'crude oil', 'rupee', 'dollar', 'forex'
+    'crude oil', 'rupee', 'dollar', 'forex', 'live', 'breaking'
   ]
   
-  const irrelevantKeywords = [
-    'cricket', 'bollywood', 'politics', 'weather', 'crime',
-    'celebrity', 'entertainment', 'sports', 'fashion'
+  // Strong freshness indicators
+  const freshnessKeywords = [
+    'today', 'live', 'breaking', 'now', 'latest', 'just in',
+    'this morning', 'this afternoon', 'current', 'ongoing',
+    'right now', 'minutes ago', 'hours ago', 'real time'
+  ]
+  
+  // Outdated indicators to avoid
+  const outdatedKeywords = [
+    'yesterday', 'last week', 'previous', 'former', 'old',
+    'days ago', 'week ago', 'month ago', 'historical'
   ]
   
   const hasRelevant = relevantKeywords.some(keyword => text.includes(keyword))
-  const hasIrrelevant = irrelevantKeywords.some(keyword => text.includes(keyword))
+  const hasFresh = freshnessKeywords.some(keyword => text.includes(keyword))
+  const hasOutdated = outdatedKeywords.some(keyword => text.includes(keyword))
   
-  return hasRelevant && !hasIrrelevant
+  // Must be relevant AND fresh AND not outdated
+  return hasRelevant && hasFresh && !hasOutdated
+}
+
+function checkForTimeIndicators(title: string, description: string): boolean {
+  const text = `${title} ${description}`.toLowerCase()
+  const timeIndicators = [
+    'live', 'breaking', 'now', 'today', 'this morning', 'this afternoon',
+    'real time', 'just in', 'minutes ago', 'hours ago', 'current'
+  ]
+  
+  return timeIndicators.some(indicator => text.includes(indicator))
 }
 
 function extractDomain(url: string): string {
@@ -307,8 +354,10 @@ function extractDomain(url: string): string {
     if (domain.includes('business-standard')) return 'Business Standard'
     if (domain.includes('financialexpress')) return 'Financial Express'
     if (domain.includes('zeebiz')) return 'Zee Business'
+    if (domain.includes('ndtv')) return 'NDTV Business'
+    if (domain.includes('cnbctv18')) return 'CNBC TV18'
     return domain
   } catch {
-    return 'Market Analysis'
+    return 'Live Market News'
   }
 }
