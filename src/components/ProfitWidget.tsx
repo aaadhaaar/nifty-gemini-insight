@@ -21,7 +21,7 @@ const ProfitWidget = () => {
     // Add the message listener for the widget
     const handleMessage = (msg: MessageEvent) => {
       console.log('Widget message received:', msg.data);
-      const widget = document.getElementById('MiniChartWidget-u3t49oz');
+      const widget = document.getElementById('MiniChartWidget-84mnii1');
       
       if (!widget) return;
       
@@ -42,7 +42,7 @@ const ProfitWidget = () => {
     window.addEventListener("message", handleMessage);
 
     // Set up widget load detection
-    const widget = document.getElementById('MiniChartWidget-u3t49oz') as HTMLIFrameElement;
+    const widget = document.getElementById('MiniChartWidget-84mnii1') as HTMLIFrameElement;
     
     if (widget) {
       // Handle successful load
@@ -91,7 +91,7 @@ const ProfitWidget = () => {
     setIsLoading(true);
     
     // Force refresh the iframe
-    const widget = document.getElementById('MiniChartWidget-u3t49oz') as HTMLIFrameElement;
+    const widget = document.getElementById('MiniChartWidget-84mnii1') as HTMLIFrameElement;
     if (widget) {
       const currentSrc = widget.src;
       widget.src = '';
@@ -165,8 +165,8 @@ const ProfitWidget = () => {
             borderRadius: '12px'
           }}
           data-widget-name="MiniChartWidget"
-          src="https://widget.darqube.com/mini-chart-widget?token=673488bbcfce33d56834bcfc"
-          id="MiniChartWidget-u3t49oz"
+          src="https://widget.darqube.com/mini-chart-widget?token=684dde638d5a5327704d4084"
+          id="MiniChartWidget-84mnii1"
           title="Profit.com Market Widget"
           allow="same-origin"
           sandbox="allow-scripts allow-same-origin allow-forms"
