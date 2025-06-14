@@ -11,36 +11,34 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create Profit.com widget script
+    // Create the iframe element
+    const iframe = document.createElement('iframe');
+    iframe.style.border = 'none';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.setAttribute('data-widget-name', 'AdvancedChartWidget');
+    iframe.src = 'https://widget.darqube.com/advanced-chart-widget?token=684dbc1284490f9273764e0d';
+    iframe.id = 'AdvancedChartWidget-qjhwij1';
+
+    // Create the script for message handling
     const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.async = true;
-    script.src = 'https://www.profit.com/widget/widget.js';
-    
-    // Create widget configuration
-    const widgetConfig = document.createElement('script');
-    widgetConfig.type = 'text/javascript';
-    widgetConfig.innerHTML = `
-      window.ProfitWidget = {
-        symbol: 'NIFTY',
-        width: '100%',
-        height: '100%',
-        theme: 'dark',
-        interval: '1D',
-        toolbar: true,
-        container: 'profit-chart-container'
-      };
+    script.innerHTML = `
+      window.top.addEventListener("message", function(msg) {
+        const widget = document.getElementById('AdvancedChartWidget-qjhwij1');
+        
+        if (!widget) return;
+        
+        const styles = msg.data?.styles;
+        const token = msg.data?.token;
+        const urlToken = new URL(widget.src)?.searchParams?.get?.('token');
+        if (styles && token === urlToken) {
+          Object.keys(styles).forEach(key => widget.style.setProperty(key, styles[key]))
+        }
+      });
     `;
 
-    // Create the container div for the widget
-    const widgetDiv = document.createElement('div');
-    widgetDiv.id = 'profit-chart-container';
-    widgetDiv.style.width = '100%';
-    widgetDiv.style.height = '100%';
-
     if (containerRef.current) {
-      containerRef.current.appendChild(widgetConfig);
-      containerRef.current.appendChild(widgetDiv);
+      containerRef.current.appendChild(iframe);
       containerRef.current.appendChild(script);
     }
 
@@ -69,7 +67,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="profit-chart-widget h-full"
+          className="darqube-chart-widget h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
