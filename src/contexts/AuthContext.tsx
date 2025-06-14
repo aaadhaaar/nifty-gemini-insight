@@ -57,7 +57,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: fullName ? { full_name: fullName } : undefined
+        data: fullName ? { 
+          full_name: fullName,
+          company: 'The Undercurrent'
+        } : {
+          company: 'The Undercurrent'
+        }
       }
     });
     return { error };
