@@ -11,39 +11,54 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create the widget script for Stock Target Advisor
+    // Create TradingView widget script
     const script = document.createElement('script');
     script.type = 'text/javascript';
-    script.src = 'https://www.stocktargetadvisor.com/widgets/js/widget.js';
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.async = true;
-    
-    script.onload = () => {
-      // Initialize the widget once script is loaded
-      if (window.STAWidget) {
-        window.STAWidget.init({
-          container: containerRef.current,
-          symbol: 'NIFTY',
-          market: 'NSE',
-          width: '100%',
-          height: '100%',
-          theme: 'dark',
-          type: 'chart'
-        });
-      }
+
+    // Widget configuration
+    const config = {
+      autosize: true,
+      symbol: "NSE:NIFTY",
+      interval: "D",
+      timezone: "Asia/Kolkata",
+      theme: "dark",
+      style: "1",
+      locale: "en",
+      enable_publishing: false,
+      backgroundColor: "rgba(15, 23, 42, 1)",
+      gridColor: "rgba(71, 85, 105, 0.2)",
+      hide_top_toolbar: false,
+      hide_legend: false,
+      save_image: false,
+      container_id: "tradingview_widget"
     };
 
-    // Append script to head
-    document.head.appendChild(script);
+    script.innerHTML = JSON.stringify(config);
+
+    // Create widget container
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'tradingview-widget-container';
+    widgetContainer.style.height = '100%';
+    widgetContainer.style.width = '100%';
+
+    const widgetDiv = document.createElement('div');
+    widgetDiv.id = 'tradingview_widget';
+    widgetDiv.style.height = '100%';
+    widgetDiv.style.width = '100%';
+
+    widgetContainer.appendChild(widgetDiv);
+    widgetContainer.appendChild(script);
+
+    if (containerRef.current) {
+      containerRef.current.appendChild(widgetContainer);
+    }
 
     return () => {
       // Cleanup when component unmounts
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
-      }
-      // Remove script from head
-      const existingScript = document.querySelector('script[src="https://www.stocktargetadvisor.com/widgets/js/widget.js"]');
-      if (existingScript) {
-        existingScript.remove();
       }
     };
   }, []);
@@ -65,7 +80,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="sta-chart-widget h-full w-full"
+          className="tradingview-chart-widget h-full w-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
@@ -88,22 +103,5 @@ const NiftyChart = () => {
     </div>
   );
 };
-
-// Extend window object to include STAWidget
-declare global {
-  interface Window {
-    STAWidget: {
-      init: (config: {
-        container: HTMLElement | null;
-        symbol: string;
-        market: string;
-        width: string;
-        height: string;
-        theme: string;
-        type: string;
-      }) => void;
-    };
-  }
-}
 
 export default NiftyChart;
