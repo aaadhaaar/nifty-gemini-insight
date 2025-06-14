@@ -22,16 +22,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Starting market events fetch with increased limit...')
+    // Get strategic context from request
+    const body = await req.json().catch(() => ({}))
+    const searchIntensity = body.searchIntensity || 'standard'
+    const timeContext = body.timeContext || new Date().getHours()
+
+    console.log(`Strategic market fetch - ${searchIntensity} intensity at hour ${timeContext}`)
     
-    // Initialize API usage manager with increased limits
+    // Enhanced API usage manager with strategic allocation
     const apiManager = new ApiUsageManager(supabaseClient)
     const { canProceed, currentSearches, remainingSearches } = await apiManager.checkDailyUsage()
 
     if (!canProceed) {
-      console.log(`Daily limit reached: ${currentSearches}/60`)
+      console.log(`Daily strategic limit reached: ${currentSearches}/60`)
       return new Response(
-        JSON.stringify({ success: false, message: 'Daily API limit reached (60 calls)' }),
+        JSON.stringify({ success: false, message: 'Daily strategic API limit reached (60 calls)' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -39,30 +44,55 @@ serve(async (req) => {
     // Clean up old articles first
     await cleanupOldArticles(supabaseClient)
 
-    // Initialize news searcher for market events
+    // Strategic search allocation based on time and intensity
     const newsSearcher = new NewsSearcher(Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '')
-    const searchQueries = newsSearcher.getOptimizedMarketEventQueries()
+    let searchQueries = []
+    let maxSearches = 1 // Default conservative
     
-    const maxSearchesToday = Math.min(2, remainingSearches) // Keep conservative per call
+    switch (searchIntensity) {
+      case 'high': // Market open/close - maximum coverage
+        searchQueries = newsSearcher.getHighPriorityQueries()
+        maxSearches = Math.min(3, remainingSearches)
+        break
+      case 'pre-market': // Pre-market focus on overnight developments
+        searchQueries = newsSearcher.getPreMarketQueries()
+        maxSearches = Math.min(2, remainingSearches)
+        break
+      case 'post-market': // Post-market analysis focus
+        searchQueries = newsSearcher.getPostMarketQueries()
+        maxSearches = Math.min(2, remainingSearches)
+        break
+      default: // Standard market hours
+        searchQueries = newsSearcher.getOptimizedMarketEventQueries()
+        maxSearches = Math.min(1, remainingSearches)
+    }
+    
     const allMarketEvents = []
 
-    // Search for market events
-    for (let i = 0; i < maxSearchesToday; i++) {
-      const query = searchQueries[i]
-      const marketEvents = await newsSearcher.searchMarketEvents(query)
+    // Execute strategic searches
+    for (let i = 0; i < maxSearches; i++) {
+      const query = searchQueries[i] || searchQueries[0] // Fallback to first query
+      const marketEvents = await newsSearcher.searchMarketEvents(query, searchIntensity)
       allMarketEvents.push(...marketEvents)
 
-      // Update API usage count
+      // Update API usage count incrementally
       await apiManager.updateUsageCount(currentSearches, i + 1)
     }
 
-    // Sort by confidence and freshness
-    allMarketEvents.sort((a, b) => (b.confidence * b.freshness_score) - (a.confidence * a.freshness_score))
-    const topMarketEvents = allMarketEvents.slice(0, 8)
+    // Enhanced sorting with time-based relevance
+    allMarketEvents.sort((a, b) => {
+      const scoreA = (a.confidence * a.freshness_score) + (a.time_relevance || 0)
+      const scoreB = (b.confidence * b.freshness_score) + (b.time_relevance || 0)
+      return scoreB - scoreA
+    })
+    
+    // Strategic event selection based on intensity
+    const eventLimit = searchIntensity === 'high' ? 12 : searchIntensity === 'pre-market' || searchIntensity === 'post-market' ? 8 : 6
+    const topMarketEvents = allMarketEvents.slice(0, eventLimit)
 
-    console.log(`Collected ${topMarketEvents.length} AI-analyzed market events`)
+    console.log(`Strategic collection: ${topMarketEvents.length} AI-analyzed events (${searchIntensity} intensity)`)
 
-    // Store market events as structured news articles
+    // Store market events with strategic categorization
     for (const event of topMarketEvents) {
       await supabaseClient
         .from('news_articles')
@@ -71,7 +101,7 @@ serve(async (req) => {
           content: event.ai_summary,
           summary: event.market_implications,
           sentiment: determineSentiment(event.market_implications),
-          market_impact: determineImpact(event.confidence),
+          market_impact: determineImpact(event.confidence, searchIntensity),
           category: event.event_type,
           source: event.source,
           url: null,
@@ -79,24 +109,27 @@ serve(async (req) => {
         })
     }
 
-    // Generate enhanced market analysis from events
+    // Generate strategic market analysis
     if (topMarketEvents.length > 0) {
-      await generateMarketAnalysis(supabaseClient, topMarketEvents)
+      await generateMarketAnalysis(supabaseClient, topMarketEvents, searchIntensity)
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         eventsProcessed: topMarketEvents.length,
-        searchesUsed: maxSearchesToday,
-        remainingSearches: remainingSearches - maxSearchesToday,
+        searchesUsed: maxSearches,
+        remainingSearches: remainingSearches - maxSearches,
         dailyLimit: 60,
-        coverage: 'AI-powered market events (60 calls/day)'
+        strategicIntensity: searchIntensity,
+        timeContext: timeContext,
+        coverage: `Strategic AI market intelligence (${currentSearches + maxSearches}/60 calls)`,
+        efficiency: calculateEfficiency(timeContext, searchIntensity, maxSearches)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (error) {
-    console.error('Error in fetch-news function:', error)
+    console.error('Error in strategic fetch-news function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
@@ -105,8 +138,8 @@ serve(async (req) => {
 })
 
 function determineSentiment(implications: string): string {
-  const positive = ['positive', 'boost', 'growth', 'opportunity', 'strong', 'beat']
-  const negative = ['headwind', 'decline', 'risk', 'concern', 'weak', 'challenge']
+  const positive = ['positive', 'boost', 'growth', 'opportunity', 'strong', 'beat', 'surge', 'rally']
+  const negative = ['headwind', 'decline', 'risk', 'concern', 'weak', 'challenge', 'fall', 'crash']
   
   const lowerImplications = implications.toLowerCase()
   const positiveCount = positive.filter(word => lowerImplications.includes(word)).length
@@ -117,16 +150,19 @@ function determineSentiment(implications: string): string {
   return 'neutral'
 }
 
-function determineImpact(confidence: number): string {
-  if (confidence >= 80) return 'high'
-  if (confidence >= 60) return 'medium'
+function determineImpact(confidence: number, intensity: string): string {
+  // Boost impact during high-intensity periods
+  const boost = intensity === 'high' ? 10 : intensity === 'pre-market' || intensity === 'post-market' ? 5 : 0
+  const adjustedConfidence = confidence + boost
+  
+  if (adjustedConfidence >= 85) return 'high'
+  if (adjustedConfidence >= 65) return 'medium'
   return 'low'
 }
 
 function extractCompanies(description: string): string[] {
-  // Simple company extraction - can be enhanced
   const companies = []
-  const commonCompanies = ['TCS', 'Infosys', 'Reliance', 'HDFC', 'ICICI', 'SBI', 'Wipro', 'Bharti Airtel', 'ITC', 'HUL']
+  const commonCompanies = ['TCS', 'Infosys', 'Reliance', 'HDFC', 'ICICI', 'SBI', 'Wipro', 'Bharti Airtel', 'ITC', 'HUL', 'Adani', 'Tata Motors', 'L&T', 'Asian Paints']
   
   for (const company of commonCompanies) {
     if (description.toUpperCase().includes(company.toUpperCase())) {
@@ -135,4 +171,15 @@ function extractCompanies(description: string): string[] {
   }
   
   return companies
+}
+
+function calculateEfficiency(hour: number, intensity: string, searches: number): string {
+  const isMarketHours = hour >= 9 && hour <= 16
+  const isPeakHours = (hour >= 9 && hour < 10) || (hour >= 15.5 && hour < 16)
+  
+  if (isPeakHours && intensity === 'high') return 'Maximum Efficiency'
+  if (isMarketHours && searches > 1) return 'High Efficiency'
+  if (isMarketHours) return 'Good Efficiency'
+  if (intensity === 'pre-market' || intensity === 'post-market') return 'Strategic Efficiency'
+  return 'Conservation Mode'
 }

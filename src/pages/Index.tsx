@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import ProfitWidget from '@/components/ProfitWidget';
@@ -78,59 +79,110 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Conservative interval calculation for free tier optimization
-  const getOptimizedInterval = () => {
+  // Strategic API call timing for maximum market impact coverage
+  const getStrategicInterval = () => {
     const now = new Date();
     const hour = now.getHours();
+    const minute = now.getMinutes();
     
-    // Market hours (9 AM to 4 PM IST) - moderate frequency only if user is active
-    if (hour >= 9 && hour <= 16) {
-      return userActive ? 2 * 60 * 60 * 1000 : 4 * 60 * 60 * 1000; // 2hr active, 4hr inactive
+    // Pre-market (7-9 AM) - High priority for overnight developments
+    if (hour >= 7 && hour < 9) {
+      return userActive ? 45 * 60 * 1000 : 90 * 60 * 1000; // 45min active, 90min inactive
     }
-    // Evening (5 PM to 10 PM) - less frequent
-    else if (hour >= 17 && hour <= 22) {
-      return userActive ? 4 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000; // 4hr active, 8hr inactive
+    // Market open (9-10 AM) - Critical opening hour
+    else if (hour >= 9 && hour < 10) {
+      return userActive ? 20 * 60 * 1000 : 40 * 60 * 1000; // 20min active, 40min inactive
     }
-    // Night (11 PM to 8 AM) - very infrequent
+    // Morning session (10 AM-12 PM) - Active trading
+    else if (hour >= 10 && hour < 12) {
+      return userActive ? 30 * 60 * 1000 : 60 * 60 * 1000; // 30min active, 60min inactive
+    }
+    // Lunch break (12-1 PM) - Reduced frequency
+    else if (hour >= 12 && hour < 13) {
+      return userActive ? 60 * 60 * 1000 : 120 * 60 * 1000; // 60min active, 120min inactive
+    }
+    // Afternoon session (1-3:30 PM) - Active trading
+    else if (hour >= 13 && hour < 15.5) {
+      return userActive ? 25 * 60 * 1000 : 50 * 60 * 1000; // 25min active, 50min inactive
+    }
+    // Market close (3:30-4 PM) - Critical closing analysis
+    else if (hour >= 15.5 && hour < 16) {
+      return userActive ? 15 * 60 * 1000 : 30 * 60 * 1000; // 15min active, 30min inactive
+    }
+    // Post-market (4-6 PM) - Moderate for results/announcements
+    else if (hour >= 16 && hour < 18) {
+      return userActive ? 60 * 60 * 1000 : 120 * 60 * 1000; // 60min active, 120min inactive
+    }
+    // Evening (6-10 PM) - Global market watch
+    else if (hour >= 18 && hour < 22) {
+      return userActive ? 90 * 60 * 1000 : 180 * 60 * 1000; // 90min active, 180min inactive
+    }
+    // Night (10 PM-7 AM) - Very infrequent, overnight developments only
     else {
-      return 12 * 60 * 60 * 1000; // 12 hours regardless of activity
+      return 240 * 60 * 1000; // 4 hours regardless of activity
     }
   };
 
-  // Conservative API call limits for free tier
+  // Smart API call strategy with priority system
   const shouldMakeApiCall = () => {
-    if (apiCallsToday >= 60) return false; // Updated daily limit to 60
+    if (apiCallsToday >= 60) return false;
     if (!lastApiCall) return true; // First call of the session
     
     const now = new Date();
+    const hour = now.getHours();
     const timeSinceLastCall = now.getTime() - lastApiCall.getTime();
-    const optimizedInterval = getOptimizedInterval();
+    const strategicInterval = getStrategicInterval();
     
-    return timeSinceLastCall >= optimizedInterval;
+    // Force calls during critical market periods regardless of interval
+    const isCriticalPeriod = (
+      (hour >= 9 && hour < 10) || // Market open
+      (hour >= 15.5 && hour < 16) // Market close
+    );
+    
+    if (isCriticalPeriod && timeSinceLastCall >= 15 * 60 * 1000 && userActive) {
+      return true; // Force call every 15 minutes during critical periods
+    }
+    
+    return timeSinceLastCall >= strategicInterval;
   };
 
-  // Function to fetch market data
+  // Enhanced market data fetching with priority queuing
   const fetchMarketData = async () => {
     if (!shouldMakeApiCall()) {
-      console.log('Skipping API call - conserving usage');
+      console.log('Skipping API call - strategic timing optimization');
       return;
     }
 
     if (apiCallsToday >= 60) {
-      console.log('Daily API limit reached (60 calls)');
+      console.log('Daily API limit reached (60 calls) - strategic conservation mode');
       return;
     }
 
     try {
-      console.log('Triggering optimized market events fetch...');
+      const now = new Date();
+      const hour = now.getHours();
       
-      const { data, error } = await supabase.functions.invoke('fetch-news');
+      // Priority-based search strategy
+      let searchIntensity = 'standard';
+      if ((hour >= 9 && hour < 10) || (hour >= 15.5 && hour < 16)) {
+        searchIntensity = 'high'; // Market open/close
+      } else if (hour >= 7 && hour < 9) {
+        searchIntensity = 'pre-market'; // Pre-market focus
+      } else if (hour >= 16 && hour < 18) {
+        searchIntensity = 'post-market'; // Post-market analysis
+      }
+      
+      console.log(`Strategic market fetch - ${searchIntensity} intensity (${apiCallsToday + 1}/60 calls)`);
+      
+      const { data, error } = await supabase.functions.invoke('fetch-news', {
+        body: { searchIntensity, timeContext: hour }
+      });
+      
       if (error) {
-        console.error('Error fetching market data:', error);
+        console.error('Error fetching strategic market data:', error);
       } else {
-        console.log('Market data fetch result:', data);
+        console.log('Strategic market data result:', data);
         
-        const now = new Date();
         const newCallCount = apiCallsToday + 1;
         
         setLastApiCall(now);
@@ -142,33 +194,42 @@ const Index = () => {
         localStorage.setItem('lastApiCallDate', now.toDateString());
       }
     } catch (error) {
-      console.error('Error calling fetch-news function:', error);
+      console.error('Error in strategic fetch-news function:', error);
     }
   };
 
-  // Smart auto-fetch system optimized for free tier
+  // Intelligent auto-fetch system with market-aware scheduling
   useEffect(() => {
-    // Initial check - only fetch if really needed and no recent data
-    const checkInitialFetch = () => {
+    // Strategic initial fetch based on market timing
+    const checkStrategicFetch = () => {
       const storedDate = localStorage.getItem('lastApiCallDate');
       const today = new Date().toDateString();
+      const hour = new Date().getHours();
       
-      // Only fetch on first load if no data from today and user is active
-      if (storedDate !== today && apiCallsToday === 0 && userActive) {
+      // Prioritize initial fetch during market hours
+      const isMarketHours = hour >= 9 && hour <= 16;
+      const shouldInitialFetch = (
+        storedDate !== today && 
+        apiCallsToday === 0 && 
+        (isMarketHours || userActive)
+      );
+      
+      if (shouldInitialFetch) {
+        console.log('Strategic initial fetch triggered');
         fetchMarketData();
       }
     };
 
-    checkInitialFetch();
+    checkStrategicFetch();
 
-    // Set up conservative interval checking
-    const smartInterval = setInterval(() => {
-      if (shouldMakeApiCall() && userActive) {
+    // Market-aware interval checking
+    const strategicInterval = setInterval(() => {
+      if (shouldMakeApiCall() && (userActive || new Date().getHours() >= 9 && new Date().getHours() <= 16)) {
         fetchMarketData();
       }
-    }, 60 * 60 * 1000); // Check every hour instead of 30 minutes
+    }, 30 * 60 * 1000); // Check every 30 minutes
 
-    return () => clearInterval(smartInterval);
+    return () => clearInterval(strategicInterval);
   }, [apiCallsToday, lastApiCall, userActive]);
 
   const tabs = [
@@ -190,10 +251,10 @@ const Index = () => {
 
   const getNextCallTime = () => {
     if (!lastApiCall) return 'Soon';
-    if (apiCallsToday >= 60) return 'Tomorrow'; // Updated limit check
+    if (apiCallsToday >= 60) return 'Tomorrow';
     
-    const optimizedInterval = getOptimizedInterval();
-    const nextCallTime = new Date(lastApiCall.getTime() + optimizedInterval);
+    const strategicInterval = getStrategicInterval();
+    const nextCallTime = new Date(lastApiCall.getTime() + strategicInterval);
     const now = new Date();
     
     if (nextCallTime <= now) return 'Soon';
@@ -202,6 +263,15 @@ const Index = () => {
     if (diffInMinutes < 60) return `${diffInMinutes}m`;
     const diffInHours = Math.floor(diffInMinutes / 60);
     return `${diffInHours}h`;
+  };
+
+  const getApiEfficiency = () => {
+    const hour = new Date().getHours();
+    if (hour >= 9 && hour < 16) return 'Market Hours - High Priority';
+    if (hour >= 7 && hour < 9) return 'Pre-Market - Strategic';
+    if (hour >= 16 && hour < 18) return 'Post-Market - Analysis';
+    if (hour >= 18 && hour < 22) return 'Global Watch - Moderate';
+    return 'Overnight - Minimal';
   };
 
   return (
@@ -312,14 +382,18 @@ const Index = () => {
           </div>
         )}
 
-        {/* Optimized Status Bar */}
+        {/* Enhanced Strategic Status Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700/50 p-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${apiCallsToday >= 60 ? 'bg-red-400' : apiCallsToday >= 40 ? 'bg-yellow-400' : 'bg-green-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${
+                  apiCallsToday >= 55 ? 'bg-red-400' : 
+                  apiCallsToday >= 40 ? 'bg-yellow-400' : 
+                  apiCallsToday >= 20 ? 'bg-green-400' : 'bg-blue-400'
+                }`}></div>
                 <span className="text-xs text-slate-400">
-                  {apiCallsToday}/60 calls • Last: {getTimeSinceLastCall()}
+                  {apiCallsToday}/60 • Last: {getTimeSinceLastCall()}
                 </span>
               </div>
               <div className="text-xs text-slate-500">
@@ -327,7 +401,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs text-green-400">Free Tier</span>
+              <span className="text-xs text-blue-400">{getApiEfficiency()}</span>
               <span className="text-xs text-slate-400">
                 UI: {lastUpdate}
               </span>
