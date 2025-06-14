@@ -11,41 +11,22 @@ const NiftyChart = () => {
       containerRef.current.innerHTML = '';
     }
 
-    // Create DarQube widget
+    // Create Profit.com widget
     const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'darqube-widget-container';
+    widgetContainer.className = 'profit-widget-container';
     
     // Create the widget HTML
     widgetContainer.innerHTML = `
       <iframe 
         style="border: none; width: 100%; height: 100%;" 
-        data-widget-name="AdvancedChartWidget" 
-        src="https://widget.darqube.com/advanced-chart-widget?token=684dbc1284490f9273764e0d" 
-        id="AdvancedChartWidget-bvs4qly"
+        src="https://www.profit.com/widget/chart?symbol=NIFTY&interval=1D&theme=dark" 
+        id="profit-chart-widget"
+        allowfullscreen
       ></iframe>
     `;
 
     if (containerRef.current) {
       containerRef.current.appendChild(widgetContainer);
-      
-      // Add the message listener script
-      const script = document.createElement('script');
-      script.innerHTML = `
-        window.top.addEventListener("message", function(msg) {
-          const widget = document.getElementById('AdvancedChartWidget-bvs4qly');
-          
-          if (!widget) return;
-          
-          const styles = msg.data?.styles;
-          const token = msg.data?.token;
-          const urlToken = new URL(widget.src)?.searchParams?.get?.('token');
-          if (styles && token === urlToken) {
-            Object.keys(styles).forEach(key => widget.style.setProperty(key, styles[key]))
-          }
-        });
-      `;
-      
-      document.head.appendChild(script);
     }
 
     return () => {
@@ -73,7 +54,7 @@ const NiftyChart = () => {
       <div className="h-96 md:h-[500px] mb-6 rounded-lg overflow-hidden bg-slate-900/50">
         <div 
           ref={containerRef}
-          className="darqube-widget-container h-full"
+          className="profit-widget-container h-full"
           style={{ height: '100%', width: '100%' }}
         />
       </div>
