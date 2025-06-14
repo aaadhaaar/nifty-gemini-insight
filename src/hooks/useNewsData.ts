@@ -20,30 +20,30 @@ export interface NewsArticle {
 
 export const useNewsData = () => {
   return useQuery({
-    queryKey: ['fresh-news-articles'],
+    queryKey: ['comprehensive-news-articles'],
     queryFn: async () => {
-      console.log('Fetching ultra-fresh news articles from database...')
+      console.log('Fetching comprehensive news articles from database...')
       
-      // Only get articles from the last 24 hours for maximum freshness
-      const twentyFourHoursAgo = new Date();
-      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+      // Get articles from the last 3 days for better coverage
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       
       const { data, error } = await supabase
         .from('news_articles')
         .select('*')
-        .gte('created_at', twentyFourHoursAgo.toISOString())
+        .gte('created_at', threeDaysAgo.toISOString())
         .order('created_at', { ascending: false })
-        .limit(15);
+        .limit(20); // Increased limit for more articles
 
       if (error) {
-        console.error('Error fetching fresh news:', error);
+        console.error('Error fetching news:', error);
         throw error;
       }
 
-      console.log(`Fetched ${data?.length || 0} ultra-fresh articles (last 24h)`)
+      console.log(`Fetched ${data?.length || 0} news articles (last 3 days)`)
       return data as NewsArticle[];
     },
-    refetchInterval: 15 * 60 * 1000, // Refetch every 15 minutes for fresh data
-    staleTime: 10 * 60 * 1000, // Consider data stale after 10 minutes
+    refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
+    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
   });
 };

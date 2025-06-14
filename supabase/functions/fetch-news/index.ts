@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -17,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Starting fresh market events fetch process...')
+    console.log('Starting comprehensive market news fetch process...')
     
     // Check today's API usage
     const today = new Date().toISOString().split('T')[0]
@@ -41,41 +42,44 @@ serve(async (req) => {
 
     console.log(`Current usage: ${currentSearches}/${maxDailySearches} searches`)
     
-    // Fresh market event focused search queries - targeting TODAY's news
-    const freshMarketEventQueries = [
-      'Nifty 50 Sensex today live market news India stock exchange BSE NSE breaking',
-      'Indian stock market today earnings results RBI policy announcement live',
-      'India market news today IPO merger acquisition FII DII investment flows',
-      'BSE NSE today sector performance banking IT pharma auto stocks live',
-      'Indian rupee forex crude oil gold market impact today live news'
+    // Broadened market news search queries - targeting recent AND relevant content
+    const comprehensiveMarketQueries = [
+      'Nifty 50 Sensex BSE NSE Indian stock market news today breaking live',
+      'Indian stock market earnings results RBI monetary policy rate decision',
+      'India IPO listing FII DII foreign investment flows market impact',
+      'Banking sector IT pharma auto stocks India market performance news',
+      'Indian rupee USD forex crude oil gold commodity market news',
+      'SEBI regulations Indian capital markets corporate governance news',
+      'Mutual funds SIP investment India market trends analysis',
+      'Startup unicorn funding India venture capital private equity news'
     ]
 
-    const maxSearchesToday = Math.min(5, maxDailySearches - currentSearches)
-    const allMarketEvents = []
+    const maxSearchesToday = Math.min(8, maxDailySearches - currentSearches)
+    const allMarketNews = []
 
-    // Clean up old news articles first (older than 48 hours)
-    const twoDaysAgo = new Date()
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    // Clean up old news articles (older than 7 days instead of 2)
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
     
     await supabaseClient
       .from('news_articles')
       .delete()
-      .lt('created_at', twoDaysAgo.toISOString())
+      .lt('created_at', oneWeekAgo.toISOString())
 
     await supabaseClient
       .from('market_analysis')
       .delete()
-      .lt('created_at', twoDaysAgo.toISOString())
+      .lt('created_at', oneWeekAgo.toISOString())
 
-    console.log('Cleaned up articles older than 48 hours')
+    console.log('Cleaned up articles older than 7 days')
 
     for (let i = 0; i < maxSearchesToday; i++) {
-      const query = freshMarketEventQueries[i]
-      console.log(`Searching for TODAY's market events: ${query}`)
+      const query = comprehensiveMarketQueries[i]
+      console.log(`Searching for market news: ${query}`)
       
       try {
-        // Use 'pd' (past day) for ultra-fresh results and add market-specific filters
-        const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&freshness=pd&country=IN&search_lang=en&result_filter=web`, {
+        // Use 'pw' (past week) for broader results, then filter for relevance
+        const braveResponse = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=15&freshness=pw&country=IN&search_lang=en&result_filter=web`, {
           headers: {
             'X-Subscription-Token': Deno.env.get('BRAVE_SEARCH_API_KEY') ?? '',
             'Accept': 'application/json',
@@ -89,7 +93,7 @@ serve(async (req) => {
 
         const searchData = await braveResponse.json()
         const results = searchData.web?.results || []
-        console.log(`Found ${results.length} fresh results for market events query`)
+        console.log(`Found ${results.length} results for market news query`)
 
         // Update API usage count
         await supabaseClient
@@ -100,48 +104,47 @@ serve(async (req) => {
             search_count: currentSearches + i + 1
           })
 
-        // Extract and filter for ultra-fresh market events
+        // Extract and filter for relevant market news
         for (const result of results) {
           if (!result.title || !result.description) continue
 
-          if (isUltraFreshMarketEvent(result.title, result.description)) {
-            // Additional freshness check - prioritize results with time indicators
-            const hasTimeIndicator = checkForTimeIndicators(result.title, result.description)
+          if (isRelevantMarketNews(result.title, result.description)) {
+            const freshnessScore = calculateFreshnessScore(result.title, result.description)
             
-            allMarketEvents.push({
+            allMarketNews.push({
               title: result.title,
               description: result.description,
               url: result.url || '',
               source: extractDomain(result.url || ''),
               timestamp: new Date().toISOString(),
-              freshness_score: hasTimeIndicator ? 10 : 8
+              freshness_score: freshnessScore
             })
           }
         }
       } catch (searchError) {
-        console.error(`Error processing fresh market events query "${query}":`, searchError)
+        console.error(`Error processing market news query "${query}":`, searchError)
         continue
       }
     }
 
-    // Sort by freshness score and limit to most relevant
-    allMarketEvents.sort((a, b) => b.freshness_score - a.freshness_score)
-    const topFreshEvents = allMarketEvents.slice(0, 8)
+    // Sort by freshness score and relevance
+    allMarketNews.sort((a, b) => b.freshness_score - a.freshness_score)
+    const topMarketNews = allMarketNews.slice(0, 12) // Increased from 8 to 12
 
-    console.log(`Collected ${topFreshEvents.length} ultra-fresh market events`)
+    console.log(`Collected ${topMarketNews.length} relevant market news articles`)
 
-    // Generate comprehensive market impact analysis for fresh events
-    if (topFreshEvents.length > 0) {
-      await generateComprehensiveMarketAnalysis(supabaseClient, topFreshEvents)
+    // Generate market impact analysis for collected news
+    if (topMarketNews.length > 0) {
+      await generateMarketAnalysis(supabaseClient, topMarketNews)
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        eventsProcessed: topFreshEvents.length,
+        articlesProcessed: topMarketNews.length,
         searchesUsed: maxSearchesToday,
         remainingSearches: maxDailySearches - (currentSearches + maxSearchesToday),
-        freshness: 'ultra-fresh'
+        coverage: 'comprehensive'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
@@ -154,7 +157,7 @@ serve(async (req) => {
   }
 })
 
-async function generateComprehensiveMarketAnalysis(supabaseClient: any, marketEvents: any[]) {
+async function generateMarketAnalysis(supabaseClient: any, marketNews: any[]) {
   try {
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiApiKey) {
@@ -162,187 +165,203 @@ async function generateComprehensiveMarketAnalysis(supabaseClient: any, marketEv
       return
     }
 
-    // Combine all market events for comprehensive analysis
-    const eventsText = marketEvents.map(event => 
-      `${event.title}: ${event.description}`
-    ).join('\n\n')
+    // Process news in batches for better analysis
+    const batchSize = 4
+    for (let i = 0; i < marketNews.length; i += batchSize) {
+      const newsBatch = marketNews.slice(i, i + batchSize)
+      const newsText = newsBatch.map(news => 
+        `${news.title}: ${news.description}`
+      ).join('\n\n')
 
-    const prompt = `Analyze these Indian stock market events and provide comprehensive market analysis in JSON format:
+      const prompt = `Analyze these Indian market news articles and create comprehensive market insights:
 
-    Events:
-    ${eventsText}
+      News Articles:
+      ${newsText}
 
-    Provide analysis in this exact JSON format:
-    {
-      "market_overview": "Comprehensive 3-4 sentence overview of current market situation",
-      "key_events": [
-        {
-          "event": "Brief description of major event",
-          "impact": "Specific market impact explanation",
-          "sectors_affected": ["sector1", "sector2"],
-          "impact_strength": "very_weak|weak|moderate|strong|very_strong",
-          "impact_direction": "positive|negative|neutral",
-          "confidence_score": number (0-100)
-        }
-      ],
-      "overall_sentiment": "positive|negative|neutral",
-      "overall_impact_strength": "very_weak|weak|moderate|strong|very_strong",
-      "overall_impact_direction": "positive|negative|neutral",
-      "risk_factors": ["factor1", "factor2"],
-      "opportunities": ["opportunity1", "opportunity2"]
-    }
+      Provide analysis in this exact JSON format:
+      {
+        "articles": [
+          {
+            "title": "Clear, impactful headline",
+            "content": "Detailed explanation of what happened and its market implications",
+            "summary": "Brief 2-3 sentence summary",
+            "sentiment": "positive|negative|neutral",
+            "market_impact": "high|medium|low",
+            "category": "Market category (e.g., Banking, Technology, Policy)",
+            "companies": ["company1", "company2"],
+            "source": "News source name"
+          }
+        ],
+        "market_overview": "Overall market situation analysis",
+        "key_insights": [
+          {
+            "insight": "Key market insight",
+            "impact_strength": "very_weak|weak|moderate|strong|very_strong",
+            "impact_direction": "positive|negative|neutral"
+          }
+        ]
+      }
 
-    For impact_strength, use:
-    - very_weak: Minor news with minimal market relevance
-    - weak: Some market relevance but limited immediate impact
-    - moderate: Notable impact on specific sectors or indices
-    - strong: Significant impact likely to move markets
-    - very_strong: Major event with substantial market-wide implications
+      Focus on creating actionable, well-structured news articles with clear market implications. Respond only with valid JSON.`
 
-    Focus on Indian market context and provide specific, actionable insights. Respond only with valid JSON.`
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          topK: 1,
-          topP: 1,
-          maxOutputTokens: 1024,
-        }
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 1,
+            topP: 1,
+            maxOutputTokens: 2048,
+          }
+        })
       })
-    })
 
-    if (!response.ok) {
-      console.error('Gemini API error for market analysis:', response.status)
-      return
-    }
+      if (!response.ok) {
+        console.error('Gemini API error for market analysis:', response.status)
+        continue
+      }
 
-    const data = await response.json()
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+      const data = await response.json()
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
 
-    if (!generatedText) {
-      console.error('No generated text from Gemini for market analysis')
-      return
-    }
+      if (!generatedText) {
+        console.error('No generated text from Gemini for market analysis')
+        continue
+      }
 
-    const jsonMatch = generatedText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      console.error('No JSON found in Gemini market analysis response')
-      return
-    }
+      const jsonMatch = generatedText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.error('No JSON found in Gemini market analysis response')
+        continue
+      }
 
-    const marketAnalysis = JSON.parse(jsonMatch[0])
-    
-    // Convert strength indicators to numeric values for database storage
-    const strengthToNumeric = (strength: string): number => {
-      switch (strength) {
-        case 'very_weak': return -1
-        case 'weak': return -0.5
-        case 'moderate': return 0
-        case 'strong': return 0.5
-        case 'very_strong': return 1
-        default: return 0
+      const analysis = JSON.parse(jsonMatch[0])
+      
+      // Insert processed articles into news_articles table
+      if (analysis.articles && Array.isArray(analysis.articles)) {
+        for (const article of analysis.articles) {
+          await supabaseClient
+            .from('news_articles')
+            .insert({
+              title: article.title || 'Market News',
+              content: article.content || '',
+              summary: article.summary || '',
+              sentiment: article.sentiment || 'neutral',
+              market_impact: article.market_impact || 'medium',
+              category: article.category || 'Market News',
+              companies: article.companies || [],
+              source: article.source || 'Market Intelligence'
+            })
+        }
+      }
+
+      // Insert market analysis insights
+      if (analysis.key_insights && Array.isArray(analysis.key_insights)) {
+        for (const insight of analysis.key_insights.slice(0, 2)) {
+          const strengthToNumeric = (strength: string): number => {
+            switch (strength) {
+              case 'very_weak': return -1
+              case 'weak': return -0.5
+              case 'moderate': return 0
+              case 'strong': return 0.5
+              case 'very_strong': return 1
+              default: return 0
+            }
+          }
+
+          const impactValue = strengthToNumeric(insight.impact_strength || 'moderate')
+          const directionMultiplier = insight.impact_direction === 'negative' ? -1 : 
+                                     insight.impact_direction === 'positive' ? 1 : 0
+
+          await supabaseClient
+            .from('market_analysis')
+            .insert({
+              what_happened: insight.insight || 'Market development',
+              why_matters: `Market impact: ${insight.impact_strength || 'moderate'} ${insight.impact_direction || 'neutral'}`,
+              market_impact_description: insight.insight || 'Market analysis',
+              expected_points_impact: impactValue * directionMultiplier,
+              confidence_score: 75
+            })
+        }
       }
     }
 
-    // Create a comprehensive market analysis entry
-    const overallImpactValue = strengthToNumeric(marketAnalysis.overall_impact_strength || 'moderate')
-    const directionMultiplier = marketAnalysis.overall_impact_direction === 'negative' ? -1 : 
-                               marketAnalysis.overall_impact_direction === 'positive' ? 1 : 0
-
-    const { error: analysisError } = await supabaseClient
-      .from('market_analysis')
-      .insert({
-        news_article_id: null,
-        what_happened: marketAnalysis.market_overview || 'Market events analysis',
-        why_matters: `Key factors: ${marketAnalysis.risk_factors?.join(', ') || 'Multiple market factors'}. Opportunities: ${marketAnalysis.opportunities?.join(', ') || 'Various opportunities'}`,
-        market_impact_description: marketAnalysis.key_events?.map(e => `${e.event}: ${e.impact}`).join('. ') || 'Market impact from multiple events',
-        expected_points_impact: overallImpactValue * directionMultiplier,
-        confidence_score: 85
-      })
-
-    if (analysisError) {
-      console.error('Error inserting comprehensive market analysis:', analysisError)
-    } else {
-      console.log('Comprehensive market analysis generated successfully')
-    }
-
-    // Also create individual event analyses
-    if (marketAnalysis.key_events && Array.isArray(marketAnalysis.key_events)) {
-      for (const event of marketAnalysis.key_events.slice(0, 3)) {
-        const eventImpactValue = strengthToNumeric(event.impact_strength || 'moderate')
-        const eventDirectionMultiplier = event.impact_direction === 'negative' ? -1 : 
-                                       event.impact_direction === 'positive' ? 1 : 0
-
-        await supabaseClient
-          .from('market_analysis')
-          .insert({
-            news_article_id: null,
-            what_happened: event.event || 'Market event',
-            why_matters: event.impact || 'Market impact',
-            market_impact_description: `Sectors affected: ${event.sectors_affected?.join(', ') || 'Multiple sectors'}. Impact: ${event.impact_strength || 'moderate'} ${event.impact_direction || 'neutral'}. ${event.impact || ''}`,
-            expected_points_impact: eventImpactValue * eventDirectionMultiplier,
-            confidence_score: event.confidence_score || 70
-          })
-      }
-    }
+    console.log('Market analysis completed successfully')
 
   } catch (error) {
-    console.error('Error generating comprehensive market analysis:', error)
+    console.error('Error generating market analysis:', error)
   }
 }
 
-function isUltraFreshMarketEvent(title: string, description: string): boolean {
+function isRelevantMarketNews(title: string, description: string): boolean {
   const text = `${title} ${description}`.toLowerCase()
   
-  // Enhanced keywords for fresh market events
+  // Broadened relevant keywords for Indian market news
   const relevantKeywords = [
-    'nifty', 'sensex', 'bse', 'nse', 'stock market', 'shares', 'equity',
-    'rbi', 'policy', 'rate', 'inflation', 'gdp', 'budget',
-    'earnings', 'results', 'quarterly', 'profit', 'loss',
-    'ipo', 'merger', 'acquisition', 'fii', 'dii',
-    'banking', 'financial', 'it sector', 'pharma', 'auto',
-    'crude oil', 'rupee', 'dollar', 'forex', 'live', 'breaking'
+    'nifty', 'sensex', 'bse', 'nse', 'stock market', 'shares', 'equity', 'index',
+    'rbi', 'sebi', 'policy', 'rate', 'inflation', 'gdp', 'budget', 'fiscal',
+    'earnings', 'results', 'quarterly', 'profit', 'revenue', 'growth',
+    'ipo', 'listing', 'merger', 'acquisition', 'fii', 'dii', 'investment',
+    'banking', 'financial', 'fintech', 'insurance', 'nbfc',
+    'it sector', 'technology', 'software', 'pharma', 'healthcare', 'auto', 'automobile',
+    'energy', 'oil', 'gas', 'renewable', 'infrastructure', 'real estate',
+    'rupee', 'dollar', 'forex', 'currency', 'commodity', 'gold', 'silver',
+    'mutual fund', 'sip', 'portfolio', 'trading', 'investor', 'market cap',
+    'startup', 'unicorn', 'funding', 'venture capital', 'private equity'
   ]
   
-  // Strong freshness indicators
-  const freshnessKeywords = [
-    'today', 'live', 'breaking', 'now', 'latest', 'just in',
-    'this morning', 'this afternoon', 'current', 'ongoing',
-    'right now', 'minutes ago', 'hours ago', 'real time'
+  // Quality indicators (positive signals)
+  const qualityKeywords = [
+    'breaking', 'announced', 'reported', 'launched', 'approved', 'signed',
+    'increased', 'decreased', 'growth', 'decline', 'performance', 'impact',
+    'analysis', 'outlook', 'forecast', 'trend', 'update', 'news'
   ]
   
-  // Outdated indicators to avoid
-  const outdatedKeywords = [
-    'yesterday', 'last week', 'previous', 'former', 'old',
-    'days ago', 'week ago', 'month ago', 'historical'
+  // Avoid spam/irrelevant content
+  const excludeKeywords = [
+    'horoscope', 'astrology', 'celebrity', 'bollywood', 'cricket', 'football',
+    'weather', 'traffic', 'recipe', 'health tips', 'lifestyle', 'entertainment'
   ]
   
   const hasRelevant = relevantKeywords.some(keyword => text.includes(keyword))
-  const hasFresh = freshnessKeywords.some(keyword => text.includes(keyword))
-  const hasOutdated = outdatedKeywords.some(keyword => text.includes(keyword))
+  const hasQuality = qualityKeywords.some(keyword => text.includes(keyword))
+  const hasExcluded = excludeKeywords.some(keyword => text.includes(keyword))
   
-  // Must be relevant AND fresh AND not outdated
-  return hasRelevant && hasFresh && !hasOutdated
+  return hasRelevant && hasQuality && !hasExcluded
 }
 
-function checkForTimeIndicators(title: string, description: string): boolean {
+function calculateFreshnessScore(title: string, description: string): number {
   const text = `${title} ${description}`.toLowerCase()
-  const timeIndicators = [
-    'live', 'breaking', 'now', 'today', 'this morning', 'this afternoon',
-    'real time', 'just in', 'minutes ago', 'hours ago', 'current'
-  ]
+  let score = 5 // Base score
   
-  return timeIndicators.some(indicator => text.includes(indicator))
+  // Time-based freshness indicators
+  const ultraFreshKeywords = ['today', 'now', 'live', 'breaking', 'just', 'minutes ago', 'hours ago']
+  const freshKeywords = ['this week', 'recently', 'latest', 'current', 'new', 'update']
+  const moderateKeywords = ['this month', 'announced', 'reported', 'launched']
+  
+  if (ultraFreshKeywords.some(keyword => text.includes(keyword))) {
+    score += 5
+  } else if (freshKeywords.some(keyword => text.includes(keyword))) {
+    score += 3
+  } else if (moderateKeywords.some(keyword => text.includes(keyword))) {
+    score += 1
+  }
+  
+  // Market relevance boost
+  const highImpactKeywords = ['nifty', 'sensex', 'rbi', 'policy', 'earnings', 'ipo']
+  if (highImpactKeywords.some(keyword => text.includes(keyword))) {
+    score += 2
+  }
+  
+  return score
 }
 
 function extractDomain(url: string): string {
@@ -356,8 +375,10 @@ function extractDomain(url: string): string {
     if (domain.includes('zeebiz')) return 'Zee Business'
     if (domain.includes('ndtv')) return 'NDTV Business'
     if (domain.includes('cnbctv18')) return 'CNBC TV18'
+    if (domain.includes('bloomberg')) return 'Bloomberg'
+    if (domain.includes('reuters')) return 'Reuters'
     return domain
   } catch {
-    return 'Live Market News'
+    return 'Market Intelligence'
   }
 }
