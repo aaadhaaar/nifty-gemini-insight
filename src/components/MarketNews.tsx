@@ -8,6 +8,35 @@ import { supabase } from '@/integrations/supabase/client';
 const MarketNews = () => {
   const { data: newsArticles, isLoading, error, refetch, isFetching } = useNewsData();
 
+  // -------- ADDED FILTER TO HIDE "USELESS" DEMO DATA --------
+  // Hide articles from fallback/dummy sources and titles
+  const filteredArticles = (newsArticles || []).filter((article) => {
+    if (!article) return false;
+    // Titles of the dummy card to be filtered out
+    const dummyTitles = [
+      'Indian Market Intelligence Update',
+    ];
+    // Sources of the dummy/fallback data to be filtered out
+    const dummySources = [
+      'Indian Market AI Engine',
+      'Market Intelligence Engine',
+      'Market Intelligence',
+    ];
+    // Remove if title is dummy or source is fallback/demo
+    if (dummyTitles.includes(article.title?.trim())) return false;
+    if (dummySources.includes(article.source?.trim())) return false;
+    // (Optional) If both title and content match the classic placeholders, filter those as well
+    if (
+      article.content &&
+      article.content.includes('Indian market intelligence system analyzing Nifty, Sensex movements') &&
+      article.summary &&
+      article.summary.includes('Strategic positioning opportunities identified across Indian equity sectors')
+    ) {
+      return false;
+    }
+    return true;
+  });
+
   const handleForceRefresh = async () => {
     console.log('Force refreshing market intelligence...');
     try {
@@ -182,7 +211,7 @@ const MarketNews = () => {
         </div>
       </div>
 
-      {!newsArticles || newsArticles.length === 0 ? (
+      {!filteredArticles || filteredArticles.length === 0 ? (
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 text-center">
           <p className="text-slate-400 mb-2">No market events available</p>
           <p className="text-xs text-slate-500 mb-4">AI analysis will appear as market events develop</p>
@@ -198,7 +227,7 @@ const MarketNews = () => {
           </div>
         </div>
       ) : (
-        newsArticles.map((article) => (
+        filteredArticles.map((article) => (
           <div key={article.id} className={`bg-slate-800/50 backdrop-blur-xl rounded-2xl border p-4 md:p-6 hover:bg-slate-700/30 transition-all duration-300 ${getSentimentColor(article.sentiment)}`}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3">
