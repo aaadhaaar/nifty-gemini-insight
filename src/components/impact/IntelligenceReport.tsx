@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TrendingUp, TrendingDown, Activity, Zap, Target, Brain, Flame, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, Zap, Target, Brain, Flame, AlertTriangle, IndianRupee, BarChart3 } from 'lucide-react';
 import { ImpactAnalysisData } from '@/hooks/useImpactAnalysis';
 
 interface IntelligenceReportProps {
@@ -35,35 +35,47 @@ const IntelligenceReport: React.FC<IntelligenceReportProps> = ({
     return 'LOW';
   };
 
-  const formatText = (text: string, maxLength: number = 120) => {
-    if (text.length <= maxLength) return text;
-    
-    // Find the last complete sentence within the limit
-    const truncated = text.substring(0, maxLength);
-    const lastPeriod = truncated.lastIndexOf('.');
-    const lastExclamation = truncated.lastIndexOf('!');
-    const lastQuestion = truncated.lastIndexOf('?');
-    
-    const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
-    
-    if (lastSentenceEnd > maxLength * 0.7) {
-      return text.substring(0, lastSentenceEnd + 1);
+  const getMarketIcon = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('nifty') || lowerText.includes('sensex') || lowerText.includes('indian')) {
+      return <IndianRupee className="w-4 h-4 text-orange-400" />;
     }
-    
-    // Fall back to word boundary
-    const lastSpace = truncated.lastIndexOf(' ');
-    return lastSpace > 0 ? text.substring(0, lastSpace) + '...' : truncated + '...';
+    if (lowerText.includes('rbi') || lowerText.includes('policy')) {
+      return <BarChart3 className="w-4 h-4 text-purple-400" />;
+    }
+    return <Brain className="w-4 h-4 text-blue-400" />;
   };
 
-  const breakIntoPoints = (text: string) => {
-    // Split by common separators and clean up
-    const points = text
-      .split(/[.!?]/)
-      .map(point => point.trim())
-      .filter(point => point.length > 20) // Filter out very short fragments
-      .slice(0, 3); // Limit to 3 main points
+  const formatTextIntoPoints = (text: string, maxPoints: number = 3) => {
+    if (!text || text.length < 50) return [text];
     
-    return points.length > 0 ? points : [formatText(text, 150)];
+    // Split by sentences first
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    
+    if (sentences.length <= maxPoints) {
+      return sentences.map(s => s.trim()).filter(s => s.length > 0);
+    }
+    
+    // If too many sentences, try to group related ones
+    const points = [];
+    let currentPoint = '';
+    
+    for (let i = 0; i < sentences.length && points.length < maxPoints; i++) {
+      const sentence = sentences[i].trim();
+      
+      if (currentPoint.length + sentence.length < 120) {
+        currentPoint += (currentPoint ? '. ' : '') + sentence;
+      } else {
+        if (currentPoint) points.push(currentPoint);
+        currentPoint = sentence;
+      }
+    }
+    
+    if (currentPoint && points.length < maxPoints) {
+      points.push(currentPoint);
+    }
+    
+    return points.length > 0 ? points : [text.substring(0, 150) + '...'];
   };
 
   const impactStrength = getImpactStrength(item.expected_points_impact || 0);
@@ -73,9 +85,9 @@ const IntelligenceReport: React.FC<IntelligenceReportProps> = ({
   const priorityLevel = getPriorityLevel(item.expected_points_impact || 0, item.confidence_score || 0);
   const isHighPriority = priorityLevel === 'CRITICAL' || priorityLevel === 'HIGH';
 
-  const summaryPoints = breakIntoPoints(item.what_happened);
-  const impactPoints = breakIntoPoints(item.why_matters);
-  const analysisPoints = item.market_impact_description ? breakIntoPoints(item.market_impact_description) : [];
+  const keyIntelligence = formatTextIntoPoints(item.what_happened, 3);
+  const strategicImpact = formatTextIntoPoints(item.why_matters, 3);
+  const marketAnalysis = item.market_impact_description ? formatTextIntoPoints(item.market_impact_description, 2) : [];
 
   return (
     <div className={`border rounded-xl p-4 transition-all duration-300 ${
@@ -128,13 +140,13 @@ const IntelligenceReport: React.FC<IntelligenceReportProps> = ({
       <div className="space-y-3">
         <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
           <div className="flex items-center space-x-2 mb-2">
-            <Zap className="w-4 h-4 text-blue-400" />
+            {getMarketIcon(item.what_happened)}
             <span className="text-xs font-medium text-blue-300">Key Intelligence</span>
           </div>
           <div className="space-y-2">
-            {summaryPoints.map((point, idx) => (
+            {keyIntelligence.map((point, idx) => (
               <div key={idx} className="flex items-start space-x-2">
-                <span className="text-blue-400 text-xs mt-1">•</span>
+                <span className="text-blue-400 text-xs mt-1 flex-shrink-0">•</span>
                 <p className="text-sm text-slate-300 leading-relaxed">{point}</p>
               </div>
             ))}
@@ -147,25 +159,25 @@ const IntelligenceReport: React.FC<IntelligenceReportProps> = ({
             <span className="text-xs font-medium text-purple-300">Strategic Impact</span>
           </div>
           <div className="space-y-2">
-            {impactPoints.map((point, idx) => (
+            {strategicImpact.map((point, idx) => (
               <div key={idx} className="flex items-start space-x-2">
-                <span className="text-purple-400 text-xs mt-1">•</span>
+                <span className="text-purple-400 text-xs mt-1 flex-shrink-0">•</span>
                 <p className="text-sm text-slate-300 leading-relaxed">{point}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {analysisPoints.length > 0 && (
+        {marketAnalysis.length > 0 && (
           <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20">
             <div className="flex items-center space-x-2 mb-2">
-              <Brain className="w-4 h-4 text-orange-400" />
+              <Zap className="w-4 h-4 text-orange-400" />
               <span className="text-xs font-medium text-orange-300">Market Analysis</span>
             </div>
             <div className="space-y-2">
-              {analysisPoints.map((point, idx) => (
+              {marketAnalysis.map((point, idx) => (
                 <div key={idx} className="flex items-start space-x-2">
-                  <span className="text-orange-400 text-xs mt-1">•</span>
+                  <span className="text-orange-400 text-xs mt-1 flex-shrink-0">•</span>
                   <p className="text-sm text-slate-300 leading-relaxed">{point}</p>
                 </div>
               ))}
