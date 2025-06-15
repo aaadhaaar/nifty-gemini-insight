@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { ApiUsageManager } from './utils/apiUsageManager.ts'
@@ -37,17 +36,13 @@ serve(async (req) => {
     const { canProceed, currentSearches, remainingSearches } = await apiManager.checkDailyUsage()
 
     if (!canProceed && !forceRefresh) {
-      console.log(`Daily API limit reached: ${currentSearches}/60 - generating enhanced fallback`)
-      
-      await this.generateEnhancedFallback(supabaseClient)
-      
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Enhanced market intelligence fallback generated',
-          eventsProcessed: 3,
+          message: 'API quota reached. No market events generated.',
+          eventsProcessed: 0,
           searchesUsed: 0,
-          mode: 'enhanced_fallback'
+          mode: 'quota_exceeded'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
@@ -110,43 +105,3 @@ serve(async (req) => {
     )
   }
 })
-
-async function generateEnhancedFallback(supabaseClient: any) {
-  const fallbackEvents = [
-    {
-      title: "NSE Nifty Shows Strong Technical Breakout Above 24,800 Resistance",
-      content: "Advanced technical analysis confirms sustained breakout above key resistance levels with strong volume confirmation. Institutional accumulation patterns detected across banking and IT sectors.",
-      summary: "Bullish momentum expected to continue toward 25,200 levels. Strategic buying opportunity in quality large-caps with strong fundamentals.",
-      category: "Index Movement",
-      source: "Market Intelligence Engine"
-    },
-    {
-      title: "Foreign Institutional Investors Net Buying Surge in Indian Equities",
-      content: "FII net inflows reach ₹8,500 crores this week, indicating renewed confidence in Indian markets. Sector rotation from defensive to cyclical stocks observed.",
-      summary: "Positive sentiment shift supports market rally. Focus on export-oriented and domestic consumption plays for optimal positioning.",
-      category: "Investment Flows", 
-      source: "Market Intelligence Engine"
-    },
-    {
-      title: "Banking Sector Outperforms on Credit Growth Optimism",
-      content: "Private sector banks lead rally on strong Q3 earnings preview and improving asset quality metrics. NIM expansion expected on rate cycle stabilization.",
-      summary: "Banking index targets 15% upside. Private banks offer better risk-reward than PSU counterparts in current environment.",
-      category: "Banking Sector",
-      source: "Market Intelligence Engine"
-    }
-  ]
-
-  for (const event of fallbackEvents) {
-    await supabaseClient
-      .from('news_articles')
-      .insert({
-        title: event.title,
-        content: event.content,
-        summary: event.summary,
-        sentiment: 'positive',
-        market_impact: 'medium',
-        category: event.category,
-        source: event.source,
-      })
-  }
-}
