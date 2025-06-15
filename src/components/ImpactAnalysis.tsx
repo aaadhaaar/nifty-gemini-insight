@@ -7,6 +7,8 @@ import MarketSummaryCards from './impact/MarketSummaryCards';
 import CriticalAlerts from './impact/CriticalAlerts';
 import IntelligenceReport from './impact/IntelligenceReport';
 import CompetitiveIntelligenceSummary from './impact/CompetitiveIntelligenceSummary';
+import { isTechnicalAnalysis } from '@/utils/isTechnicalAnalysis';
+import { fallbackIntelligence } from './impact/ImpactUtils';
 
 const ImpactAnalysis = () => {
   const { data: impactData, isLoading, error, refetch } = useImpactAnalysis();
@@ -44,43 +46,6 @@ const ImpactAnalysis = () => {
       triggerMarketDataFetch();
     }
   }, [impactData, isLoading, refetch]);
-
-  // Utility to check for technical analysis language
-  const isTechnicalAnalysis = (item: any) => {
-    const textBlocks = [
-      item?.what_happened || "",
-      item?.why_matters || "",
-      item?.market_impact_description || ""
-    ];
-    // List of technical terms/phrases to screen for
-    const technicalPatterns = [
-      /breakout/i,
-      /break\s+(above|below)/i,
-      /support\s+level/i,
-      /resistance\s+level/i,
-      /resistance/i,
-      /support/i,
-      /alert[:]?/i,
-      /bullish/i,
-      /bearish/i,
-      /call\/put/i,
-      /stop[-\s]?loss/i,
-      /rally/i,
-      /pullback/i,
-      /buy(?:ing)?\s+above/i,
-      /selling?\s+below/i,
-      /\btrend\b/i,
-      /short[-\s]?term/i,
-      /long[-\s]?positions?/i,
-      /\btrigger/i,
-      /\bsignal/i,
-      /indicator/i,
-      /crucial\s+(level|resistance|support)/i
-    ];
-    return textBlocks.some(text =>
-      technicalPatterns.some(pattern => pattern.test(text))
-    );
-  };
 
   // Enhanced priority-based sorting function
   const sortByPriorityAndImpact = (data: any[]) => {
@@ -153,52 +118,8 @@ const ImpactAnalysis = () => {
     return 'bg-yellow-500/20 border-yellow-500/30';
   };
 
-  // Enhanced fallback intelligence, unchanged
-  const fallbackIntelligence = [
-    {
-      id: 'critical-1',
-      news_article_id: null,
-      what_happened: 'BREAKING: Elite Market Intelligence Systems Detecting Institutional Flow Patterns. Advanced AI algorithms have identified significant smart money movements across key market sectors.',
-      why_matters: 'Institutional positioning data shows aggressive accumulation in banking and IT sectors. This indicates potential major directional moves in the next 24-48 hours. FII/DII defensive rotation from mid-caps creating opportunity zones.',
-      market_impact_description: 'Technical breakout zones identified at 24,850 resistance. Options flow analysis indicates large bullish positions being built in Nifty 25,000-25,500 call spreads. Volatility compression suggests imminent expansion phase.',
-      expected_points_impact: 2.1,
-      confidence_score: 94,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'critical-2',
-      news_article_id: null,
-      what_happened: 'URGENT: Cross-Market Correlation Analysis Reveals Hidden Opportunities. Global market convergence patterns suggest Indian markets positioned for asymmetric gains.',
-      why_matters: 'International peer analysis shows India outperforming key emerging markets. Currency stability combined with domestic liquidity creating immediate tactical advantages for strategic positioning.',
-      market_impact_description: 'Banking index showing relative strength vs Nifty with PSU banks leading charge. Metal sector showing early accumulation signs while IT sector consolidating near critical support levels.',
-      expected_points_impact: 1.8,
-      confidence_score: 91,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'critical-3',
-      news_article_id: null,
-      what_happened: 'ALERT: Sector Rotation Intelligence - High-Conviction Signals Detected. Proprietary momentum indicators showing divergence between large-cap stability and mid-cap acceleration.',
-      why_matters: 'Market microstructure analysis detecting specific entry/exit opportunities. Smart money flows indicating sector leadership changes with measurable probability metrics for tactical positioning.',
-      market_impact_description: 'Unusual options activity in financial sector with 3:1 call/put ratio indicating bullish sentiment. Large block trades detected in infrastructure and pharma creating momentum catalysts.',
-      expected_points_impact: 1.4,
-      confidence_score: 88,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'critical-4',
-      news_article_id: null,
-      what_happened: 'COMPETITIVE EDGE: Market Microstructure Analysis Active. Real-time order flow analysis detecting institutional block trades and dark pool activity.',
-      why_matters: 'Early warning signals for major moves being generated through advanced pattern recognition. Institutional behavior patterns providing predictive indicators for short-term market direction.',
-      market_impact_description: 'Cross-asset correlation shifts detected with currency and commodity influences on equity positioning. Systematic risk metrics indicating optimal hedge ratios for current market conditions.',
-      expected_points_impact: 1.1,
-      confidence_score: 85,
-      created_at: new Date().toISOString()
-    }
-  ];
-
   // Apply filtering of technical reports and then priority sorting
-  const displayData = useMemo(() => {
+  const displayData = React.useMemo(() => {
     const rawData = impactData && impactData.length > 0 ? impactData : fallbackIntelligence;
     // FILTER: Remove all items that match technical analysis
     const eventDrivenData = rawData.filter(item => !isTechnicalAnalysis(item));
