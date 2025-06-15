@@ -6,6 +6,7 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
   const [lastApiCall, setLastApiCall] = useState<Date | null>(null);
   const [apiCallsToday, setApiCallsToday] = useState(0);
   const [forceNextCall, setForceNextCall] = useState(false);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   // Load stored data on mount
   useEffect(() => {
@@ -24,6 +25,9 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
       localStorage.setItem('lastApiCallDate', today);
       setApiCallsToday(0);
     }
+    
+    // Mark initialization as complete
+    setInitialFetchDone(true);
   }, []);
 
   // Enhanced aggressive API call strategy
@@ -116,33 +120,37 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
 
   // Force next API call (used when no events detected)
   const forceApiCall = () => {
+    console.log('Forcing immediate API call');
     setForceNextCall(true);
     fetchMarketData(true);
   };
 
-  // Intelligent auto-fetch system with market-aware scheduling
+  // Enhanced auto-fetch system with immediate initial fetch
   useEffect(() => {
-    // Strategic initial fetch based on market timing
-    const checkStrategicFetch = () => {
-      const storedDate = localStorage.getItem('lastApiCallDate');
-      const today = new Date().toDateString();
-      const hour = new Date().getHours();
+    // Only proceed if initialization is complete
+    if (!initialFetchDone) return;
+
+    const triggerInitialFetch = () => {
+      console.log('Checking for initial fetch trigger...');
+      console.log('Last API call:', lastApiCall);
+      console.log('API calls today:', apiCallsToday);
+      console.log('User active:', userActive);
       
-      // Prioritize initial fetch during market hours
-      const isMarketHours = hour >= 9 && hour <= 16;
-      const shouldInitialFetch = (
-        storedDate !== today && 
-        apiCallsToday === 0 && 
-        (isMarketHours || userActive)
+      // Force initial fetch if no calls made today or no recent calls
+      const shouldForceInitialFetch = (
+        apiCallsToday === 0 || 
+        !lastApiCall || 
+        (new Date().getTime() - (lastApiCall?.getTime() || 0)) > 30 * 60 * 1000 // 30 minutes
       );
       
-      if (shouldInitialFetch) {
-        console.log('Strategic initial fetch triggered');
+      if (shouldForceInitialFetch) {
+        console.log('Triggering initial strategic fetch');
         fetchMarketData(true); // Force initial fetch
       }
     };
 
-    checkStrategicFetch();
+    // Trigger initial fetch after a short delay to ensure everything is loaded
+    const initialTimer = setTimeout(triggerInitialFetch, 1000);
 
     // Market-aware interval checking
     const strategicInterval = setInterval(() => {
@@ -151,8 +159,11 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
       }
     }, 30 * 60 * 1000); // Check every 30 minutes
 
-    return () => clearInterval(strategicInterval);
-  }, [apiCallsToday, lastApiCall, userActive, forceNextCall]);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(strategicInterval);
+    };
+  }, [apiCallsToday, lastApiCall, userActive, forceNextCall, initialFetchDone]);
 
   return {
     lastApiCall,
