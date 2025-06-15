@@ -2,7 +2,6 @@
 import React, { useMemo } from 'react';
 import { Target, Zap, AlertTriangle, TrendingUp, TrendingDown, Activity, BarChart3, PieChart } from 'lucide-react';
 import { useImpactAnalysis } from '@/hooks/useImpactAnalysis';
-import ImpactChart from './ImpactChart';
 import LoadingSpinner from './LoadingSpinner';
 
 const ImpactAnalysis = () => {
@@ -35,39 +34,6 @@ const ImpactAnalysis = () => {
     if (value < -0.1) return 'bg-red-500/20 border-red-500/30';
     return 'bg-yellow-500/20 border-yellow-500/30';
   };
-
-  const chartData = useMemo(() => {
-    if (!impactData || impactData.length === 0) return [];
-
-    let cumulativeImpact = 0;
-    const timeData: { [key: string]: { impact: number; count: number } } = {};
-
-    // Group by hour for better visualization
-    impactData.forEach((item) => {
-      const hour = new Date(item.created_at).toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-      
-      if (!timeData[hour]) {
-        timeData[hour] = { impact: 0, count: 0 };
-      }
-      
-      timeData[hour].impact += item.expected_points_impact || 0;
-      timeData[hour].count += 1;
-    });
-
-    return Object.entries(timeData)
-      .map(([time, data]) => {
-        cumulativeImpact += data.impact;
-        return {
-          time,
-          cumulativeImpact,
-          articleCount: data.count
-        };
-      })
-      .slice(-12);
-  }, [impactData]);
 
   const marketSummary = useMemo(() => {
     if (!impactData || impactData.length === 0) return null;
@@ -188,11 +154,6 @@ const ImpactAnalysis = () => {
           </div>
         </div>
       )}
-
-      {/* Realtime Chart */}
-      <div className="mb-6">
-        <ImpactChart data={chartData} />
-      </div>
 
       {/* Market Events Analysis */}
       <div className="space-y-4">
