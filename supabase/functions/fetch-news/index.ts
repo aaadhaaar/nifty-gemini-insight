@@ -161,12 +161,44 @@ serve(async (req) => {
         url: event.url,
         companies: extractIndianCompanies(event.description),
       }
-      // Defensive insert, respects triggers and constraints
       try {
-        await supabaseClient
+        // Insert into news_articles
+        const { data: insertedArticleArr, error: insertError } = await supabaseClient
           .from('news_articles')
           .insert(insertObj)
+          .select('id') // Retrieve inserted id for linking
+        if (insertError) {
+          console.error('Insert failure:', event.title, insertError?.message)
+          continue
+        }
         successfulInserts += 1
+        // Insert parsed/AI intelligence into market_analysis if insert succeeded
+        if (insertedArticleArr && insertedArticleArr.length > 0) {
+          const news_article_id = insertedArticleArr[0].id
+          // Compose the market_analysis object using available AI fields
+          const analysisObj = {
+            news_article_id,
+            what_happened: event.ai_enhanced_analysis || event.title || 'Market Event',
+            why_matters: event.market_implications || 'AI: Significant market implications.',
+            market_impact_description: event.ai_enhanced_analysis || event.description || 'AI: Market assessment',
+            expected_points_impact: typeof event.expected_points_impact === 'number'
+              ? event.expected_points_impact
+              : undefined,
+            confidence_score: typeof event.confidence === 'number'
+              ? event.confidence
+              : 85,
+          }
+          // Only insert if there's at least a market analysis field (avoid empty)
+          if (analysisObj.what_happened || analysisObj.why_matters || analysisObj.market_impact_description) {
+            try {
+              await supabaseClient
+                .from('market_analysis')
+                .insert(analysisObj)
+            } catch (err) {
+              console.error('Failed to insert AI market_analysis for', news_article_id, err?.message)
+            }
+          }
+        }
       } catch (err) {
         console.error('Insert failure:', event.title, err?.message)
       }
