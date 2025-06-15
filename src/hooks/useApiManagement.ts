@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const useApiManagement = (userActive: boolean, getStrategicInterval: () => number) => {
   const [lastApiCall, setLastApiCall] = useState<Date | null>(null);
   const [apiCallsToday, setApiCallsToday] = useState(0);
+  const [forceNextCall, setForceNextCall] = useState(false);
 
   // Load stored data on mount
   useEffect(() => {
@@ -25,10 +26,10 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
     }
   }, []);
 
-  // Smart API call strategy with priority system
+  // Enhanced aggressive API call strategy
   const shouldMakeApiCall = () => {
     if (apiCallsToday >= 60) return false;
-    if (!lastApiCall) return true; // First call of the session
+    if (!lastApiCall || forceNextCall) return true; // First call or forced call
     
     const now = new Date();
     const hour = now.getHours();
@@ -41,21 +42,21 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
       (hour >= 15.5 && hour < 16) // Market close
     );
     
-    if (isCriticalPeriod && timeSinceLastCall >= 15 * 60 * 1000 && userActive) {
-      return true; // Force call every 15 minutes during critical periods
+    if (isCriticalPeriod && timeSinceLastCall >= 10 * 60 * 1000 && userActive) {
+      return true; // Force call every 10 minutes during critical periods
     }
     
     return timeSinceLastCall >= strategicInterval;
   };
 
-  // Enhanced market data fetching with priority queuing
-  const fetchMarketData = async () => {
-    if (!shouldMakeApiCall()) {
+  // Enhanced market data fetching with aggressive retry logic
+  const fetchMarketData = async (forceCall = false) => {
+    if (!shouldMakeApiCall() && !forceCall) {
       console.log('Skipping API call - strategic timing optimization');
       return;
     }
 
-    if (apiCallsToday >= 60) {
+    if (apiCallsToday >= 60 && !forceCall) {
       console.log('Daily API limit reached (60 calls) - strategic conservation mode');
       return;
     }
@@ -64,8 +65,8 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
       const now = new Date();
       const hour = now.getHours();
       
-      // Priority-based search strategy
-      let searchIntensity = 'standard';
+      // Aggressive search strategy when forcing calls
+      let searchIntensity = forceCall ? 'high' : 'standard';
       if ((hour >= 9 && hour < 10) || (hour >= 15.5 && hour < 16)) {
         searchIntensity = 'high'; // Market open/close
       } else if (hour >= 7 && hour < 9) {
@@ -74,14 +75,22 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
         searchIntensity = 'post-market'; // Post-market analysis
       }
       
-      console.log(`Strategic market fetch - ${searchIntensity} intensity (${apiCallsToday + 1}/60 calls)`);
+      console.log(`${forceCall ? 'FORCED' : 'Strategic'} market fetch - ${searchIntensity} intensity (${apiCallsToday + 1}/60 calls)`);
       
       const { data, error } = await supabase.functions.invoke('fetch-news', {
-        body: { searchIntensity, timeContext: hour }
+        body: { 
+          searchIntensity, 
+          timeContext: hour,
+          forceRefresh: forceCall
+        }
       });
       
       if (error) {
         console.error('Error fetching strategic market data:', error);
+        // If forced call fails, try again in 30 seconds
+        if (forceCall) {
+          setTimeout(() => setForceNextCall(true), 30000);
+        }
       } else {
         console.log('Strategic market data result:', data);
         
@@ -89,6 +98,7 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
         
         setLastApiCall(now);
         setApiCallsToday(newCallCount);
+        setForceNextCall(false);
         
         // Store in localStorage
         localStorage.setItem('lastApiCall', now.toISOString());
@@ -97,7 +107,17 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
       }
     } catch (error) {
       console.error('Error in strategic fetch-news function:', error);
+      // Retry on error if this was a forced call
+      if (forceCall) {
+        setTimeout(() => setForceNextCall(true), 30000);
+      }
     }
+  };
+
+  // Force next API call (used when no events detected)
+  const forceApiCall = () => {
+    setForceNextCall(true);
+    fetchMarketData(true);
   };
 
   // Intelligent auto-fetch system with market-aware scheduling
@@ -118,7 +138,7 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
       
       if (shouldInitialFetch) {
         console.log('Strategic initial fetch triggered');
-        fetchMarketData();
+        fetchMarketData(true); // Force initial fetch
       }
     };
 
@@ -126,17 +146,18 @@ export const useApiManagement = (userActive: boolean, getStrategicInterval: () =
 
     // Market-aware interval checking
     const strategicInterval = setInterval(() => {
-      if (shouldMakeApiCall() && (userActive || new Date().getHours() >= 9 && new Date().getHours() <= 16)) {
-        fetchMarketData();
+      if ((shouldMakeApiCall() || forceNextCall) && (userActive || new Date().getHours() >= 9 && new Date().getHours() <= 16)) {
+        fetchMarketData(forceNextCall);
       }
     }, 30 * 60 * 1000); // Check every 30 minutes
 
     return () => clearInterval(strategicInterval);
-  }, [apiCallsToday, lastApiCall, userActive]);
+  }, [apiCallsToday, lastApiCall, userActive, forceNextCall]);
 
   return {
     lastApiCall,
     apiCallsToday,
-    fetchMarketData
+    fetchMarketData,
+    forceApiCall
   };
 };
