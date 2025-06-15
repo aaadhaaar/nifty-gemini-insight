@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ProfitWidget from '@/components/ProfitWidget';
 import ImpactAnalysis from '@/components/ImpactAnalysis';
@@ -93,7 +92,6 @@ const Index = () => {
               </div>
             </div>
           )}
-
           <StatusBar
             lastApiCall={lastApiCall}
             apiCallsToday={apiCallsToday}
