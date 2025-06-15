@@ -22,9 +22,9 @@ export const useNewsData = () => {
   return useQuery({
     queryKey: ['news-articles'],
     queryFn: async () => {
-      console.log('Triggering market intelligence fetch...')
+      console.log('Triggering enhanced market intelligence fetch...')
       
-      // First, trigger the fetch-news edge function to get fresh market events
+      // Trigger the enhanced fetch-news edge function
       try {
         const { data: fetchResult, error: fetchError } = await supabase.functions.invoke('fetch-news', {
           body: { 
@@ -35,37 +35,37 @@ export const useNewsData = () => {
         });
 
         if (fetchError) {
-          console.error('Error calling fetch-news function:', fetchError);
+          console.error('Error calling enhanced fetch-news function:', fetchError);
         } else {
-          console.log('Market intelligence fetch result:', fetchResult);
+          console.log('Enhanced market intelligence result:', fetchResult);
         }
       } catch (error) {
-        console.error('Error invoking fetch-news function:', error);
+        console.error('Error invoking enhanced fetch-news function:', error);
       }
 
-      // Wait a moment for the edge function to process and store the data
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for the edge function to process
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Now fetch the latest news articles from the database
-      console.log('Fetching news articles from database...')
+      // Fetch the latest news articles from database
+      console.log('Fetching enhanced news articles from database...')
       
       const { data, error } = await supabase
         .from('news_articles')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(15);
+        .limit(20);
 
       if (error) {
-        console.error('Error fetching news:', error);
+        console.error('Error fetching enhanced news:', error);
         throw error;
       }
 
-      console.log(`Fetched ${data?.length || 0} news articles`)
+      console.log(`Fetched ${data?.length || 0} enhanced news articles`)
       return data as NewsArticle[];
     },
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-    staleTime: 2 * 60 * 1000, // Consider data stale after 2 minutes
-    retry: 3,
-    retryDelay: 1000,
+    refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
+    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
+    retry: 2,
+    retryDelay: 2000,
   });
 };
