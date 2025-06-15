@@ -29,16 +29,22 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ email, setEmail
     setError('');
 
     try {
+      console.log('Attempting password reset for email:', email);
+      console.log('Reset redirect URL:', `${window.location.origin}/reset-password`);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
+        console.error('Password reset error:', error);
         setError(error.message);
       } else {
+        console.log('Password reset email sent successfully');
         setResetEmailSent(true);
       }
     } catch (err) {
+      console.error('Unexpected error during password reset:', err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -57,7 +63,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ email, setEmail
         <CardContent>
           <Alert className="mb-4 bg-green-500/10 border-green-500/20">
             <AlertDescription className="text-green-400">
-              Password reset email sent! Check your inbox for instructions.
+              Password reset email sent to {email}! Check your inbox and spam folder for instructions.
             </AlertDescription>
           </Alert>
           <Button
@@ -92,6 +98,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ email, setEmail
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-10 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+              onKeyPress={(e) => e.key === 'Enter' && handleForgotPassword()}
             />
           </div>
         </div>
@@ -105,7 +112,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ email, setEmail
         <div className="space-y-3">
           <Button
             onClick={handleForgotPassword}
-            disabled={loading}
+            disabled={loading || !email}
             className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
           >
             {loading ? 'Sending...' : 'Send Reset Link'}

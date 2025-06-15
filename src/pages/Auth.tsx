@@ -22,6 +22,17 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Handle forgot password state management
+  const handleShowForgotPassword = () => {
+    console.log('Showing forgot password form');
+    setShowForgotPassword(true);
+  };
+
+  const handleBackToSignIn = () => {
+    console.log('Returning to sign in form');
+    setShowForgotPassword(false);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
@@ -53,10 +64,10 @@ const Auth = () => {
           <ForgotPasswordForm
             email={email}
             setEmail={setEmail}
-            onBack={() => setShowForgotPassword(false)}
+            onBack={handleBackToSignIn}
           />
         ) : (
-          <AuthForm onForgotPassword={() => setShowForgotPassword(true)} />
+          <AuthForm onForgotPassword={handleShowForgotPassword} />
         )}
       </div>
     </div>
