@@ -45,6 +45,43 @@ const ImpactAnalysis = () => {
     }
   }, [impactData, isLoading, refetch]);
 
+  // Utility to check for technical analysis language
+  const isTechnicalAnalysis = (item: any) => {
+    const textBlocks = [
+      item?.what_happened || "",
+      item?.why_matters || "",
+      item?.market_impact_description || ""
+    ];
+    // List of technical terms/phrases to screen for
+    const technicalPatterns = [
+      /breakout/i,
+      /break\s+(above|below)/i,
+      /support\s+level/i,
+      /resistance\s+level/i,
+      /resistance/i,
+      /support/i,
+      /alert[:]?/i,
+      /bullish/i,
+      /bearish/i,
+      /call\/put/i,
+      /stop[-\s]?loss/i,
+      /rally/i,
+      /pullback/i,
+      /buy(?:ing)?\s+above/i,
+      /selling?\s+below/i,
+      /\btrend\b/i,
+      /short[-\s]?term/i,
+      /long[-\s]?positions?/i,
+      /\btrigger/i,
+      /\bsignal/i,
+      /indicator/i,
+      /crucial\s+(level|resistance|support)/i
+    ];
+    return textBlocks.some(text =>
+      technicalPatterns.some(pattern => pattern.test(text))
+    );
+  };
+
   // Enhanced priority-based sorting function
   const sortByPriorityAndImpact = (data: any[]) => {
     return [...data].sort((a, b) => {
@@ -116,7 +153,7 @@ const ImpactAnalysis = () => {
     return 'bg-yellow-500/20 border-yellow-500/30';
   };
 
-  // Enhanced fallback intelligence with priority structure
+  // Enhanced fallback intelligence, unchanged
   const fallbackIntelligence = [
     {
       id: 'critical-1',
@@ -160,10 +197,12 @@ const ImpactAnalysis = () => {
     }
   ];
 
-  // Apply priority sorting to display data
+  // Apply filtering of technical reports and then priority sorting
   const displayData = useMemo(() => {
     const rawData = impactData && impactData.length > 0 ? impactData : fallbackIntelligence;
-    return sortByPriorityAndImpact(rawData);
+    // FILTER: Remove all items that match technical analysis
+    const eventDrivenData = rawData.filter(item => !isTechnicalAnalysis(item));
+    return sortByPriorityAndImpact(eventDrivenData);
   }, [impactData]);
 
   const marketSummary = useMemo(() => {
@@ -251,17 +290,24 @@ const ImpactAnalysis = () => {
       )}
 
       <div className="space-y-4">
-        {displayData.slice(0, 6).map((item, index) => (
-          <IntelligenceReport
-            key={item.id}
-            item={item}
-            index={index}
-            getImpactStrength={getImpactStrength}
-            getImpactDirection={getImpactDirection}
-            getImpactColor={getImpactColor}
-            getImpactBgColor={getImpactBgColor}
-          />
-        ))}
+        {displayData.length === 0 ? (
+          <div className="text-center text-slate-400 py-12">
+            <p>No event-driven market intelligence available at this time.</p>
+            <p className="text-xs mt-1">All technical analysis and pattern-based signals are now hidden.</p>
+          </div>
+        ) : (
+          displayData.slice(0, 6).map((item, index) => (
+            <IntelligenceReport
+              key={item.id}
+              item={item}
+              index={index}
+              getImpactStrength={getImpactStrength}
+              getImpactDirection={getImpactDirection}
+              getImpactColor={getImpactColor}
+              getImpactBgColor={getImpactBgColor}
+            />
+          ))
+        )}
       </div>
 
       {marketSummary && (
