@@ -1,10 +1,10 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { ApiUsageManager } from './utils/apiUsageManager.ts'
 import { NewsSearcher } from './utils/newsSearcher.ts'
 import { cleanupOldArticles } from './utils/databaseCleanup.ts'
 import { generateMarketAnalysis } from './services/marketAnalysisService.ts'
+import { SearchQueries } from './utils/searchQueries.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,19 +66,19 @@ serve(async (req) => {
     
     switch (searchIntensity) {
       case 'high':
-        searchQueries = [...newsSearcher.getIndianMarketQueries(), ...newsSearcher.getSectorSpecificQueries()]
+        searchQueries = [...SearchQueries.getIndianMarketQueries(), ...SearchQueries.getSectorSpecificQueries()]
         maxSearches = Math.min(6, remainingSearches) // Increased for comprehensive coverage
         break
       case 'pre-market':
-        searchQueries = newsSearcher.getPreMarketQueries()
+        searchQueries = SearchQueries.getPreMarketQueries()
         maxSearches = Math.min(4, remainingSearches)
         break
       case 'post-market':
-        searchQueries = newsSearcher.getPostMarketQueries()
+        searchQueries = SearchQueries.getPostMarketQueries()
         maxSearches = Math.min(4, remainingSearches)
         break
       default:
-        searchQueries = newsSearcher.getIndianMarketQueries()
+        searchQueries = SearchQueries.getIndianMarketQueries()
         maxSearches = Math.min(3, remainingSearches)
     }
     
