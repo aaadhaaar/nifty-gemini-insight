@@ -10,13 +10,22 @@ import { useStrategicTiming } from '@/hooks/useStrategicTiming';
 import { useApiManagement } from '@/hooks/useApiManagement';
 
 const Index = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { userActive, getStrategicInterval } = useStrategicTiming();
   const { lastApiCall, apiCallsToday } = useApiManagement(userActive, getStrategicInterval);
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Auto-update timestamp every minute
   useEffect(() => {
@@ -28,50 +37,72 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <AppNavigation
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/20 via-black to-slate-900/20" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-purple-900/10" />
+      
+      {/* Floating orbs for ambiance */}
+      <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-float" />
+      <div className="absolute bottom-20 right-20 w-48 h-48 bg-purple-500/10 rounded-full blur-xl animate-float" style={{ animationDelay: '2s' }} />
+      
+      <div className="relative z-10">
+        <AppNavigation
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+        />
 
-      {/* Main Content */}
-      <main className="p-4 pb-20">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <LoadingSpinner />
-          </div>
-        ) : (
-          <div className="max-w-4xl mx-auto space-y-6">
-            {activeTab === 'overview' && (
-              <>
-                <ProfitWidget />
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="lg:col-span-2">
-                    <ImpactAnalysis />
+        {/* Main Content */}
+        <main className="p-6 pb-24">
+          {loading ? (
+            <div className="flex items-center justify-center min-h-[70vh]">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="max-w-7xl mx-auto">
+              <div className="animate-slide-up">
+                {activeTab === 'overview' && (
+                  <div className="space-y-8">
+                    <div className="animate-fade-in">
+                      <ProfitWidget />
+                    </div>
+                    <div className="grid gap-8 lg:grid-cols-1">
+                      <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                        <ImpactAnalysis />
+                      </div>
+                      <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                        <MarketNews />
+                      </div>
+                    </div>
                   </div>
-                  <div className="lg:col-span-2">
+                )}
+                
+                {activeTab === 'news' && (
+                  <div className="animate-fade-in">
                     <MarketNews />
                   </div>
-                </div>
-              </>
-            )}
-            
-            {activeTab === 'news' && <MarketNews />}
-            
-            {activeTab === 'impact' && <ImpactAnalysis />}
-          </div>
-        )}
+                )}
+                
+                {activeTab === 'impact' && (
+                  <div className="animate-fade-in">
+                    <ImpactAnalysis />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-        <StatusBar
-          lastApiCall={lastApiCall}
-          apiCallsToday={apiCallsToday}
-          userActive={userActive}
-          getStrategicInterval={getStrategicInterval}
-          lastUpdate={lastUpdate}
-        />
-      </main>
+          <StatusBar
+            lastApiCall={lastApiCall}
+            apiCallsToday={apiCallsToday}
+            userActive={userActive}
+            getStrategicInterval={getStrategicInterval}
+            lastUpdate={lastUpdate}
+          />
+        </main>
+      </div>
     </div>
   );
 };
