@@ -15,17 +15,43 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isValidToken, setIsValidToken] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check if we have the required tokens from the URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    
-    if (!accessToken || !refreshToken) {
-      setError('Invalid or expired reset link. Please request a new password reset.');
-    }
+    const checkTokenAndSetSession = async () => {
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+      const type = searchParams.get('type');
+      
+      console.log('Reset password params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+
+      if (type === 'recovery' && accessToken && refreshToken) {
+        try {
+          // Set the session with the tokens from the URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            console.error('Error setting session:', error);
+            setError('Invalid or expired reset link. Please request a new password reset.');
+          } else {
+            console.log('Session set successfully for password reset');
+            setIsValidToken(true);
+          }
+        } catch (err) {
+          console.error('Error in token validation:', err);
+          setError('Invalid or expired reset link. Please request a new password reset.');
+        }
+      } else {
+        setError('Invalid or expired reset link. Please request a new password reset.');
+      }
+    };
+
+    checkTokenAndSetSession();
   }, [searchParams]);
 
   const handleResetPassword = async () => {
@@ -53,14 +79,17 @@ const ResetPassword = () => {
       });
 
       if (error) {
+        console.error('Password update error:', error);
         setError(error.message);
       } else {
+        console.log('Password updated successfully');
         setSuccess(true);
         setTimeout(() => {
           navigate('/auth');
         }, 2000);
       }
     } catch (err) {
+      console.error('Unexpected error:', err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -97,7 +126,7 @@ const ResetPassword = () => {
                   Your password has been updated successfully. Redirecting to login...
                 </AlertDescription>
               </Alert>
-            ) : (
+            ) : isValidToken ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-slate-300">New Password</Label>
@@ -135,25 +164,31 @@ const ResetPassword = () => {
                   </Alert>
                 )}
 
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleResetPassword}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                  >
-                    {loading ? 'Updating Password...' : 'Update Password'}
-                  </Button>
-
-                  <Button
-                    onClick={() => navigate('/auth')}
-                    variant="ghost"
-                    className="w-full text-slate-300 hover:text-white hover:bg-slate-700/50"
-                  >
-                    Back to Sign In
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleResetPassword}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                >
+                  {loading ? 'Updating Password...' : 'Update Password'}
+                </Button>
+              </>
+            ) : (
+              <>
+                {error && (
+                  <Alert className="bg-red-500/10 border-red-500/20">
+                    <AlertDescription className="text-red-400">{error}</AlertDescription>
+                  </Alert>
+                )}
               </>
             )}
+
+            <Button
+              onClick={() => navigate('/auth')}
+              variant="ghost"
+              className="w-full text-slate-300 hover:text-white hover:bg-slate-700/50"
+            >
+              Back to Sign In
+            </Button>
           </CardContent>
         </Card>
       </div>
