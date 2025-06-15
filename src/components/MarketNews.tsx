@@ -1,12 +1,37 @@
-
 import React from 'react';
 import { Clock, TrendingUp, TrendingDown, AlertCircle, Zap, Wifi, RefreshCw, Brain, Target } from 'lucide-react';
 import { useNewsData } from '@/hooks/useNewsData';
 import LoadingSpinner from './LoadingSpinner';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const MarketNews = () => {
   const { data: newsArticles, isLoading, error, refetch, isFetching } = useNewsData();
+
+  const handleForceRefresh = async () => {
+    console.log('Force refreshing market intelligence...');
+    try {
+      // Call the edge function with force refresh
+      const { data: fetchResult, error: fetchError } = await supabase.functions.invoke('fetch-news', {
+        body: { 
+          searchIntensity: 'high',
+          timeContext: new Date().getHours(),
+          forceRefresh: true
+        }
+      });
+
+      if (fetchError) {
+        console.error('Error force refreshing:', fetchError);
+      } else {
+        console.log('Force refresh result:', fetchResult);
+      }
+
+      // Refetch the data from the hook
+      await refetch();
+    } catch (error) {
+      console.error('Error during force refresh:', error);
+    }
+  };
 
   const getSentimentIcon = (sentiment: string | null) => {
     switch (sentiment) {
@@ -135,6 +160,20 @@ const MarketNews = () => {
               <RefreshCw className="w-3 h-3" />
             )}
           </Button>
+          <Button 
+            onClick={handleForceRefresh} 
+            variant="outline" 
+            size="sm"
+            disabled={isFetching}
+            className="text-xs bg-purple-500/20 border-purple-500/30 text-purple-300 hover:bg-purple-500/30"
+          >
+            {isFetching ? (
+              <Brain className="w-3 h-3 animate-pulse" />
+            ) : (
+              <Brain className="w-3 h-3" />
+            )}
+            AI Scan
+          </Button>
           <div className="flex items-center space-x-2">
             <Wifi className="w-3 h-3 text-green-400" />
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
@@ -146,11 +185,17 @@ const MarketNews = () => {
       {!newsArticles || newsArticles.length === 0 ? (
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 text-center">
           <p className="text-slate-400 mb-2">No market events available</p>
-          <p className="text-xs text-slate-500">AI analysis will appear as market events develop</p>
-          <Button onClick={() => refetch()} variant="outline" size="sm" className="mt-4">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Scan for Events
-          </Button>
+          <p className="text-xs text-slate-500 mb-4">AI analysis will appear as market events develop</p>
+          <div className="space-x-2">
+            <Button onClick={() => refetch()} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Scan for Events
+            </Button>
+            <Button onClick={handleForceRefresh} variant="outline" size="sm" className="bg-purple-500/20 border-purple-500/30 text-purple-300">
+              <Brain className="w-4 h-4 mr-2" />
+              Force AI Scan
+            </Button>
+          </div>
         </div>
       ) : (
         newsArticles.map((article) => (
