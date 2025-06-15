@@ -44,14 +44,50 @@ const ImpactAnalysis = () => {
     return 'bg-yellow-500/20 border-yellow-500/30';
   };
 
-  const marketSummary = useMemo(() => {
-    if (!impactData || impactData.length === 0) return null;
+  // Sample intelligence data for when no real events are available
+  const fallbackIntelligence = [
+    {
+      id: 'sample-1',
+      news_article_id: null,
+      what_happened: 'Elite Market Intelligence System Online',
+      why_matters: 'Advanced AI monitoring systems are actively scanning global markets for emerging opportunities and threats',
+      market_impact_description: 'Continuous competitive analysis framework deployed across all major market segments with real-time threat detection',
+      expected_points_impact: 0.5,
+      confidence_score: 95,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'sample-2',
+      news_article_id: null,
+      what_happened: 'Strategic Positioning Analysis Active',
+      why_matters: 'Market structure algorithms identifying institutional flow patterns and sentiment shifts across key sectors',
+      market_impact_description: 'Technical confluence zones mapped with high-probability reversal and breakout opportunities under surveillance',
+      expected_points_impact: -0.2,
+      confidence_score: 88,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'sample-3',
+      news_article_id: null,
+      what_happened: 'Global Market Intelligence Network Synchronized',
+      why_matters: 'Cross-market correlation analysis detecting early warning signals from international indices and commodity flows',
+      market_impact_description: 'FII/DII positioning data integrated with options flow analysis to predict next major directional move',
+      expected_points_impact: 0.8,
+      confidence_score: 91,
+      created_at: new Date().toISOString()
+    }
+  ];
 
-    const totalImpact = impactData.reduce((sum, item) => sum + (item.expected_points_impact || 0), 0);
-    const strongPositive = impactData.filter(item => (item.expected_points_impact || 0) > 1);
-    const strongNegative = impactData.filter(item => (item.expected_points_impact || 0) < -1);
-    const criticalEvents = impactData.filter(item => Math.abs(item.expected_points_impact || 0) >= 2);
-    const avgConfidence = impactData.reduce((sum, item) => sum + (item.confidence_score || 0), 0) / impactData.length;
+  const displayData = impactData && impactData.length > 0 ? impactData : fallbackIntelligence;
+
+  const marketSummary = useMemo(() => {
+    if (!displayData || displayData.length === 0) return null;
+
+    const totalImpact = displayData.reduce((sum, item) => sum + (item.expected_points_impact || 0), 0);
+    const strongPositive = displayData.filter(item => (item.expected_points_impact || 0) > 1);
+    const strongNegative = displayData.filter(item => (item.expected_points_impact || 0) < -1);
+    const criticalEvents = displayData.filter(item => Math.abs(item.expected_points_impact || 0) >= 2);
+    const avgConfidence = displayData.reduce((sum, item) => sum + (item.confidence_score || 0), 0) / displayData.length;
 
     return {
       totalImpact,
@@ -61,10 +97,10 @@ const ImpactAnalysis = () => {
       strongNegative: strongNegative.length,
       criticalEvents: criticalEvents.length,
       avgConfidence: Math.round(avgConfidence),
-      latestUpdate: impactData[0]?.created_at,
+      latestUpdate: displayData[0]?.created_at,
       marketMomentum: totalImpact > 1 ? 'Strong Bullish' : totalImpact < -1 ? 'Strong Bearish' : 'Consolidation'
     };
-  }, [impactData]);
+  }, [displayData]);
 
   if (isLoading) {
     return (
@@ -87,26 +123,7 @@ const ImpactAnalysis = () => {
     );
   }
 
-  if (!impactData || impactData.length === 0) {
-    return (
-      <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">Competitive Intelligence</h2>
-            <p className="text-sm text-slate-400">Elite market analysis engine</p>
-          </div>
-        </div>
-        <div className="text-center py-8 text-slate-400">
-          <Brain className="w-8 h-8 mx-auto mb-2" />
-          <p>Intelligence gathering in progress...</p>
-          <p className="text-sm mt-1">Advanced analysis will appear as market events are processed</p>
-        </div>
-      </div>
-    );
-  }
+  const isUsingFallback = !impactData || impactData.length === 0;
 
   return (
     <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 md:p-6">
@@ -116,13 +133,23 @@ const ImpactAnalysis = () => {
         </div>
         <div className="flex-1">
           <h2 className="text-lg md:text-xl font-bold text-white">Competitive Intelligence Dashboard</h2>
-          <p className="text-sm text-slate-400">Elite market analysis • Real-time strategic insights</p>
+          <p className="text-sm text-slate-400">
+            {isUsingFallback ? 'Demo mode • AI systems primed for market events' : 'Elite market analysis • Real-time strategic insights'}
+          </p>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-          <span className="text-xs text-slate-400">Active</span>
+          <div className={`w-2 h-2 rounded-full ${isUsingFallback ? 'bg-blue-400' : 'bg-green-400'} animate-pulse`}></div>
+          <span className="text-xs text-slate-400">{isUsingFallback ? 'Standby' : 'Active'}</span>
         </div>
       </div>
+
+      {isUsingFallback && (
+        <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <p className="text-sm text-blue-300">
+            🚀 <strong>Demo Intelligence:</strong> Displaying sample analysis capabilities. Live market events will appear here when detected.
+          </p>
+        </div>
+      )}
 
       {marketSummary && (
         <>
@@ -137,7 +164,7 @@ const ImpactAnalysis = () => {
       )}
 
       <div className="space-y-4">
-        {impactData.slice(0, 6).map((item, index) => (
+        {displayData.slice(0, 6).map((item, index) => (
           <IntelligenceReport
             key={item.id}
             item={item}
