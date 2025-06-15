@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,15 +42,17 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Enhanced redirect logic for authenticated users
   useEffect(() => {
-    if (user) {
-      navigate('/');
+    // Only redirect if auth is not loading and user exists
+    if (!authLoading && user) {
+      console.log('User authenticated, redirecting to main dashboard');
+      navigate('/', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (type: 'signin' | 'signup') => {
     if (!email || !password) {
@@ -131,6 +132,17 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-300">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showForgotPassword) {
     return (
