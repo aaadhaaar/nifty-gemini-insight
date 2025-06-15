@@ -1,52 +1,26 @@
 
 import React from 'react';
-import MarketOverview from './technical/MarketOverview';
-import TechnicalIndicators from './technical/TechnicalIndicators';
-import KeyLevels from './technical/KeyLevels';
-import ChartPatterns from './technical/ChartPatterns';
 
 const TechnicalAnalysis = () => {
-  // Mock technical data - in a real app, this would come from an API
-  const technicalData = {
-    overallTrend: 'bullish',
-    niftyLevel: 24500,
-    resistance: 24800,
-    support: 24200,
-    rsi: 68,
-    macd: 'positive',
-    volumeProfile: 'above_average',
-    keyLevels: [
-      { level: 24800, type: 'resistance', strength: 'strong' },
-      { level: 24650, type: 'resistance', strength: 'weak' },
-      { level: 24350, type: 'support', strength: 'moderate' },
-      { level: 24200, type: 'support', strength: 'strong' }
-    ],
-    indicators: [
-      { name: 'RSI', value: '68', signal: 'neutral', description: 'Approaching overbought zone' },
-      { name: 'MACD', value: 'Bullish crossover', signal: 'bullish', description: 'Signal line above MACD line' },
-      { name: 'Moving Averages', value: '20 > 50 > 200', signal: 'bullish', description: 'All major MAs in bullish alignment' },
-      { name: 'Volume', value: '15% above avg', signal: 'bullish', description: 'Strong buying interest' }
-    ],
-    patterns: [
-      { name: 'Ascending Triangle', timeframe: 'Daily', probability: 75, target: 25200 },
-      { name: 'Bull Flag', timeframe: 'Hourly', probability: 65, target: 24750 }
-    ]
-  };
-
   return (
-    <div className="space-y-6">
-      <MarketOverview
-        niftyLevel={technicalData.niftyLevel}
-        resistance={technicalData.resistance}
-        support={technicalData.support}
-        overallTrend={technicalData.overallTrend}
-      />
-      
-      <TechnicalIndicators indicators={technicalData.indicators} />
-      
-      <KeyLevels levels={technicalData.keyLevels} />
-      
-      <ChartPatterns patterns={technicalData.patterns} />
+    <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 my-6">
+      <h2 className="text-lg md:text-xl font-bold text-white mb-2 flex items-center space-x-2">
+        <span>📊</span>
+        <span>Market Undercurrents &amp; Event Intelligence</span>
+      </h2>
+      <div className="text-slate-300 text-sm leading-relaxed mb-4">
+        <strong className="text-orange-400">
+          This dashboard now prioritizes event-driven market intelligence instead of technical chart analysis.
+        </strong>
+        <br /><br />
+        You'll see impactful recent events, sector rotations, FII/DII institutional flows, policy dynamics, and strategic undercurrents &mdash; <b>not</b> just price levels or chart patterns.<br /><br/>
+        Review the <span className="text-yellow-300 font-semibold">Competitive Intelligence</span> dashboard below for real-time market-moving events, hidden sector flows, and developments that matter.
+      </div>
+      <div className="px-4 py-2 bg-yellow-500/10 border-l-4 border-yellow-400 rounded">
+        <span className="text-yellow-400 font-medium">Looking for technicals?</span>  
+        <br />
+        This section intentionally excludes support, resistance, RSI, or chart pattern data. Use the "Competitive Intelligence" dashboard for actionable market events and strategic shifts.
+      </div>
     </div>
   );
 };
