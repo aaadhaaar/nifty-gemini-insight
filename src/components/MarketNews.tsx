@@ -41,20 +41,26 @@ const MarketNews = () => {
 
   const getCategoryIcon = (category: string | null) => {
     switch (category) {
+      case 'RBI Monetary Policy':
       case 'Monetary Policy':
         return '🏛️';
-      case 'IPO & Listings':
-        return '🚀';
-      case 'Corporate Earnings':
+      case 'Index Movement':
         return '📊';
-      case 'Investment Flows':
+      case 'Corporate Earnings':
         return '💰';
-      case 'Regulatory':
-        return '⚖️';
+      case 'Investment Flows':
+        return '💸';
+      case 'Banking Sector':
+        return '🏦';
+      case 'IT Sector':
+        return '💻';
+      case 'Pharma Sector':
+        return '💊';
+      case 'Auto Sector':
+        return '🚗';
       case 'Currency & Forex':
         return '💱';
-      case 'Startup Ecosystem':
-        return '🦄';
+      case 'Indian Market Events':
       default:
         return '📈';
     }
@@ -75,7 +81,9 @@ const MarketNews = () => {
   };
 
   const isAiGenerated = (source: string | null) => {
-    return source === 'AI Market Analysis' || source === 'Market Intelligence';
+    return source === 'Indian Market AI Intelligence' || 
+           source === 'Indian Market AI Engine' ||
+           source === 'Market Intelligence';
   };
 
   if (isLoading) {

@@ -20,30 +20,27 @@ export interface NewsArticle {
 
 export const useNewsData = () => {
   return useQuery({
-    queryKey: ['comprehensive-news-articles'],
+    queryKey: ['news-articles'],
     queryFn: async () => {
-      console.log('Fetching comprehensive news articles from database...')
-      
-      // Get articles from the last 3 days for better coverage
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      console.log('Fetching news articles from database...')
       
       const { data, error } = await supabase
         .from('news_articles')
         .select('*')
-        .gte('created_at', threeDaysAgo.toISOString())
         .order('created_at', { ascending: false })
-        .limit(20); // Increased limit for more articles
+        .limit(15);
 
       if (error) {
         console.error('Error fetching news:', error);
         throw error;
       }
 
-      console.log(`Fetched ${data?.length || 0} news articles (last 3 days)`)
+      console.log(`Fetched ${data?.length || 0} news articles`)
       return data as NewsArticle[];
     },
-    refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
-    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
+    refetchInterval: 60 * 1000, // Refetch every minute
+    staleTime: 30 * 1000, // Consider data stale after 30 seconds
+    retry: 3,
+    retryDelay: 1000,
   });
 };
